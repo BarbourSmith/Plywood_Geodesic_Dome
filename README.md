@@ -11,6 +11,7 @@
 - **Rib Depth** (number)
 - **Hub Diameter** (number)
 - **Hub Core Diameter** (number)
+- **Frequency** (number)
 
 
 
