@@ -25,6 +25,10 @@
     {
       "name": "Hub Core Diameter",
       "ioValue": 80
+    },
+    {
+      "name": "Frequency",
+      "ioValue": 3
     }
   ],
   "topLevel": true,
@@ -80,11 +84,273 @@
     {
       "atomType": "Input",
       "x": 0,
+      "y": 0.6,
+      "uniqueID": "id-231",
+      "name": "Frequency",
+      "type": "number",
+      "options": []
+    },
+    {
+      "atomType": "Input",
+      "x": 0,
       "y": 0.5,
       "uniqueID": "id-25",
       "name": "Hub Core Diameter",
       "type": "number",
       "options": []
+    },
+    {
+      "atomType": "Molecule",
+      "x": 0.4,
+      "y": 0.2,
+      "uniqueID": "id-255",
+      "name": "Rib D",
+      "ioValues": [
+        {
+          "name": "Dome Diameter",
+          "ioValue": 4000
+        },
+        {
+          "name": "Rib Depth",
+          "ioValue": 75
+        },
+        {
+          "name": "Hub Diameter",
+          "ioValue": 100
+        },
+        {
+          "name": "Hub Core Diameter",
+          "ioValue": 80
+        },
+        {
+          "name": "Plywood Thickness",
+          "ioValue": 18
+        },
+        {
+          "name": "Rib Index",
+          "ioValue": 3
+        },
+        {
+          "name": "Frequency",
+          "ioValue": 3
+        }
+      ],
+      "topLevel": false,
+      "allAtoms": [
+        {
+          "atomType": "Output",
+          "x": 1,
+          "y": 0.5,
+          "uniqueID": "id-257",
+          "ioValues": [
+            {
+              "name": "number or geometry",
+              "ioValue": "__GEOMETRY_INPUT__"
+            }
+          ]
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.2,
+          "uniqueID": "id-259",
+          "name": "Dome Diameter",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.2,
+          "uniqueID": "id-262",
+          "name": "Rib Depth",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.3,
+          "uniqueID": "id-265",
+          "name": "Hub Diameter",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.4,
+          "uniqueID": "id-268",
+          "name": "Hub Core Diameter",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.5,
+          "uniqueID": "id-271",
+          "name": "Plywood Thickness",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.6,
+          "uniqueID": "id-274",
+          "name": "Rib Index",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.7,
+          "uniqueID": "id-277",
+          "name": "Frequency",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Code",
+          "x": 0.4,
+          "y": 0.4,
+          "uniqueID": "id-280",
+          "ioValues": [
+            {
+              "name": "domeDiameter",
+              "ioValue": 4000
+            },
+            {
+              "name": "frequency",
+              "ioValue": 3
+            },
+            {
+              "name": "ribIndex",
+              "ioValue": 3
+            },
+            {
+              "name": "ribDepth",
+              "ioValue": 75
+            },
+            {
+              "name": "hubDiameter",
+              "ioValue": 100
+            },
+            {
+              "name": "hubCoreDiameter",
+              "ioValue": 80
+            }
+          ],
+          "interpreterVersion": 1,
+          "code": "/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * ribIndex picks which rib length this is (0 = A, the shortest) among the\n * distinct edge lengths of the chosen frequency's dome. Indexes past the last\n * length reuse the longest; Dome Frame only places the ones the frequency uses.\n *\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(\n  domeDiameter: number = 4000,\n  frequency: number = 3,\n  ribIndex: number = 0,\n  ribDepth: number = 120,\n  hubDiameter: number = 300,\n  hubCoreDiameter: number = 80,\n): Assembly {\n  const R = domeDiameter / 2;\n  const f = Math.max(1, Math.min(4, Math.round(frequency)));\n\n  // Distinct chord factors (edge length / radius) of the dome above the equator.\n  // Must match the geodesic in Dome Frame: icosahedron with a vertex on top.\n  type V = [number, number, number];\n  const norm = (v: V): V => {\n    const l = Math.hypot(v[0], v[1], v[2]);\n    return [v[0] / l, v[1] / l, v[2] / l];\n  };\n  const ico: V[] = [[0, 0, 1]];\n  const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n  for (let k = 0; k < 5; k++) {\n    const a = (k * 72 * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n  }\n  for (let k = 0; k < 5; k++) {\n    const a = ((36 + k * 72) * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n  }\n  ico.push([0, 0, -1]);\n  const U = (k: number) => 1 + (k % 5);\n  const L = (k: number) => 6 + (k % 5);\n  const faces: [number, number, number][] = [];\n  for (let k = 0; k < 5; k++) {\n    faces.push([0, U(k), U(k + 1)], [U(k), L(k), U(k + 1)], [U(k + 1), L(k), L(k + 1)], [11, L(k + 1), L(k)]);\n  }\n  const factors: number[] = [];\n  for (const [ia, ib, ic] of faces) {\n    const A = ico[ia], B = ico[ib], C = ico[ic];\n    const P = (i: number, j: number): V => {\n      const k = f - i - j;\n      return norm([\n        (k * A[0] + i * B[0] + j * C[0]) / f,\n        (k * A[1] + i * B[1] + j * C[1]) / f,\n        (k * A[2] + i * B[2] + j * C[2]) / f,\n      ]);\n    };\n    for (let i = 0; i < f; i++) {\n      for (let j = 0; j < f - i; j++) {\n        const pts = [P(i, j), P(i + 1, j), P(i, j + 1)];\n        for (let e = 0; e < 3; e++) {\n          const a = pts[e], b = pts[(e + 1) % 3];\n          if (a[2] < -1e-6 || b[2] < -1e-6) continue;\n          const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);\n          if (!factors.some((x) => Math.abs(x - d) < 1e-4)) factors.push(d);\n        }\n      }\n    }\n  }\n  factors.sort((x, y) => x - y);\n  const chordFactor = factors[Math.max(0, Math.min(factors.length - 1, Math.round(ribIndex)))];\n\n  const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n  const s = Math.sin(half), c = Math.cos(half);\n  const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n  if (rCap <= rCore) throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n  if (2 * rCap * c >= chordFactor * R) throw new Error(\"Hubs are too big for this dome: caps would meet\");\n\n  // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n  const uP = [-s, c], uQ = [s, c];\n  const tP = [c, s], tQ = [-c, s];\n  const at = (u: number[], t: number[], radius: number, d: number): [number, number] => [\n    u[0] * radius + t[0] * d,\n    u[1] * radius + t[1] * d,\n  ];\n  const rIn = R - ribDepth;\n\n  const pts: [number, number][] = [\n    at(uP, tP, R, rCore),\n    at(uP, tP, R, rCap),\n    at(uQ, tQ, R, rCap),\n    at(uQ, tQ, R, rCore),\n    at(uQ, tQ, rIn, rCore),\n    at(uQ, tQ, rIn, rCap),\n    at(uP, tP, rIn, rCap),\n    at(uP, tP, rIn, rCore),\n  ];\n  let d = replicad.draw(pts[0]);\n  for (let i = 1; i < pts.length; i++) d = d.lineTo(pts[i]);\n  return new Assembly({ geometry: d.close() });\n}\n",
+          "compiledCode": "\"use strict\";\n/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * ribIndex picks which rib length this is (0 = A, the shortest) among the\n * distinct edge lengths of the chosen frequency's dome. Indexes past the last\n * length reuse the longest; Dome Frame only places the ones the frequency uses.\n *\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(domeDiameter = 4000, frequency = 3, ribIndex = 0, ribDepth = 120, hubDiameter = 300, hubCoreDiameter = 80) {\n    const R = domeDiameter / 2;\n    const f = Math.max(1, Math.min(4, Math.round(frequency)));\n    const norm = (v) => {\n        const l = Math.hypot(v[0], v[1], v[2]);\n        return [v[0] / l, v[1] / l, v[2] / l];\n    };\n    const ico = [[0, 0, 1]];\n    const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n    for (let k = 0; k < 5; k++) {\n        const a = (k * 72 * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n    }\n    for (let k = 0; k < 5; k++) {\n        const a = ((36 + k * 72) * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n    }\n    ico.push([0, 0, -1]);\n    const U = (k) => 1 + (k % 5);\n    const L = (k) => 6 + (k % 5);\n    const faces = [];\n    for (let k = 0; k < 5; k++) {\n        faces.push([0, U(k), U(k + 1)], [U(k), L(k), U(k + 1)], [U(k + 1), L(k), L(k + 1)], [11, L(k + 1), L(k)]);\n    }\n    const factors = [];\n    for (const [ia, ib, ic] of faces) {\n        const A = ico[ia], B = ico[ib], C = ico[ic];\n        const P = (i, j) => {\n            const k = f - i - j;\n            return norm([\n                (k * A[0] + i * B[0] + j * C[0]) / f,\n                (k * A[1] + i * B[1] + j * C[1]) / f,\n                (k * A[2] + i * B[2] + j * C[2]) / f,\n            ]);\n        };\n        for (let i = 0; i < f; i++) {\n            for (let j = 0; j < f - i; j++) {\n                const pts = [P(i, j), P(i + 1, j), P(i, j + 1)];\n                for (let e = 0; e < 3; e++) {\n                    const a = pts[e], b = pts[(e + 1) % 3];\n                    if (a[2] < -1e-6 || b[2] < -1e-6)\n                        continue;\n                    const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);\n                    if (!factors.some((x) => Math.abs(x - d) < 1e-4))\n                        factors.push(d);\n                }\n            }\n        }\n    }\n    factors.sort((x, y) => x - y);\n    const chordFactor = factors[Math.max(0, Math.min(factors.length - 1, Math.round(ribIndex)))];\n    const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n    const s = Math.sin(half), c = Math.cos(half);\n    const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n    if (rCap <= rCore)\n        throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n    if (2 * rCap * c >= chordFactor * R)\n        throw new Error(\"Hubs are too big for this dome: caps would meet\");\n    // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n    const uP = [-s, c], uQ = [s, c];\n    const tP = [c, s], tQ = [-c, s];\n    const at = (u, t, radius, d) => [\n        u[0] * radius + t[0] * d,\n        u[1] * radius + t[1] * d,\n    ];\n    const rIn = R - ribDepth;\n    const pts = [\n        at(uP, tP, R, rCore),\n        at(uP, tP, R, rCap),\n        at(uQ, tQ, R, rCap),\n        at(uQ, tQ, R, rCore),\n        at(uQ, tQ, rIn, rCore),\n        at(uQ, tQ, rIn, rCap),\n        at(uP, tP, rIn, rCap),\n        at(uP, tP, rIn, rCore),\n    ];\n    let d = replicad.draw(pts[0]);\n    for (let i = 1; i < pts.length; i++)\n        d = d.lineTo(pts[i]);\n    return new Assembly({ geometry: d.close() });\n}\n"
+        },
+        {
+          "atomType": "Extrude",
+          "x": 0.6,
+          "y": 0.5,
+          "uniqueID": "id-295",
+          "ioValues": [
+            {
+              "name": "geometry",
+              "ioValue": "__GEOMETRY_INPUT__"
+            },
+            {
+              "name": "height",
+              "ioValue": 18
+            }
+          ]
+        },
+        {
+          "atomType": "Color",
+          "x": 0.7,
+          "y": 0.5,
+          "uniqueID": "id-299",
+          "ioValues": [
+            {
+              "name": "geometry",
+              "ioValue": "__GEOMETRY_INPUT__"
+            }
+          ],
+          "selectedColor": "Olive"
+        },
+        {
+          "atomType": "Tag",
+          "x": 0.9,
+          "y": 0.5,
+          "uniqueID": "id-302",
+          "name": "Rib D",
+          "ioValues": [
+            {
+              "name": "geometry",
+              "ioValue": "__GEOMETRY_INPUT__"
+            }
+          ],
+          "tags": [
+            "Rib D"
+          ]
+        }
+      ],
+      "allConnectors": [
+        {
+          "ap2Name": "domeDiameter",
+          "ap1ID": "id-259",
+          "ap2ID": "id-280"
+        },
+        {
+          "ap2Name": "ribDepth",
+          "ap1ID": "id-262",
+          "ap2ID": "id-280"
+        },
+        {
+          "ap2Name": "hubDiameter",
+          "ap1ID": "id-265",
+          "ap2ID": "id-280"
+        },
+        {
+          "ap2Name": "hubCoreDiameter",
+          "ap1ID": "id-268",
+          "ap2ID": "id-280"
+        },
+        {
+          "ap2Name": "height",
+          "ap1ID": "id-271",
+          "ap2ID": "id-295"
+        },
+        {
+          "ap2Name": "ribIndex",
+          "ap1ID": "id-274",
+          "ap2ID": "id-280"
+        },
+        {
+          "ap2Name": "frequency",
+          "ap1ID": "id-277",
+          "ap2ID": "id-280"
+        },
+        {
+          "ap2Name": "geometry",
+          "ap1ID": "id-280",
+          "ap2ID": "id-295"
+        },
+        {
+          "ap2Name": "geometry",
+          "ap1ID": "id-295",
+          "ap2ID": "id-299"
+        },
+        {
+          "ap2Name": "geometry",
+          "ap1ID": "id-299",
+          "ap2ID": "id-302"
+        },
+        {
+          "ap2Name": "number or geometry",
+          "ap1ID": "id-302",
+          "ap2ID": "id-257"
+        }
+      ],
+      "fileTypeVersion": 1
     },
     {
       "atomType": "Molecule",
@@ -228,6 +494,259 @@
     },
     {
       "atomType": "Molecule",
+      "x": 0.4,
+      "y": 0.4,
+      "uniqueID": "id-305",
+      "name": "Rib E",
+      "ioValues": [
+        {
+          "name": "Dome Diameter",
+          "ioValue": 4000
+        },
+        {
+          "name": "Rib Depth",
+          "ioValue": 75
+        },
+        {
+          "name": "Hub Diameter",
+          "ioValue": 100
+        },
+        {
+          "name": "Hub Core Diameter",
+          "ioValue": 80
+        },
+        {
+          "name": "Plywood Thickness",
+          "ioValue": 18
+        },
+        {
+          "name": "Rib Index",
+          "ioValue": 4
+        },
+        {
+          "name": "Frequency",
+          "ioValue": 3
+        }
+      ],
+      "topLevel": false,
+      "allAtoms": [
+        {
+          "atomType": "Output",
+          "x": 1,
+          "y": 0.5,
+          "uniqueID": "id-307",
+          "ioValues": [
+            {
+              "name": "number or geometry",
+              "ioValue": "__GEOMETRY_INPUT__"
+            }
+          ]
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.2,
+          "uniqueID": "id-309",
+          "name": "Dome Diameter",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.2,
+          "uniqueID": "id-312",
+          "name": "Rib Depth",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.3,
+          "uniqueID": "id-315",
+          "name": "Hub Diameter",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.4,
+          "uniqueID": "id-318",
+          "name": "Hub Core Diameter",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.5,
+          "uniqueID": "id-321",
+          "name": "Plywood Thickness",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.6,
+          "uniqueID": "id-324",
+          "name": "Rib Index",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.7,
+          "uniqueID": "id-327",
+          "name": "Frequency",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Code",
+          "x": 0.4,
+          "y": 0.4,
+          "uniqueID": "id-330",
+          "ioValues": [
+            {
+              "name": "domeDiameter",
+              "ioValue": 4000
+            },
+            {
+              "name": "frequency",
+              "ioValue": 3
+            },
+            {
+              "name": "ribIndex",
+              "ioValue": 4
+            },
+            {
+              "name": "ribDepth",
+              "ioValue": 75
+            },
+            {
+              "name": "hubDiameter",
+              "ioValue": 100
+            },
+            {
+              "name": "hubCoreDiameter",
+              "ioValue": 80
+            }
+          ],
+          "interpreterVersion": 1,
+          "code": "/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * ribIndex picks which rib length this is (0 = A, the shortest) among the\n * distinct edge lengths of the chosen frequency's dome. Indexes past the last\n * length reuse the longest; Dome Frame only places the ones the frequency uses.\n *\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(\n  domeDiameter: number = 4000,\n  frequency: number = 3,\n  ribIndex: number = 0,\n  ribDepth: number = 120,\n  hubDiameter: number = 300,\n  hubCoreDiameter: number = 80,\n): Assembly {\n  const R = domeDiameter / 2;\n  const f = Math.max(1, Math.min(4, Math.round(frequency)));\n\n  // Distinct chord factors (edge length / radius) of the dome above the equator.\n  // Must match the geodesic in Dome Frame: icosahedron with a vertex on top.\n  type V = [number, number, number];\n  const norm = (v: V): V => {\n    const l = Math.hypot(v[0], v[1], v[2]);\n    return [v[0] / l, v[1] / l, v[2] / l];\n  };\n  const ico: V[] = [[0, 0, 1]];\n  const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n  for (let k = 0; k < 5; k++) {\n    const a = (k * 72 * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n  }\n  for (let k = 0; k < 5; k++) {\n    const a = ((36 + k * 72) * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n  }\n  ico.push([0, 0, -1]);\n  const U = (k: number) => 1 + (k % 5);\n  const L = (k: number) => 6 + (k % 5);\n  const faces: [number, number, number][] = [];\n  for (let k = 0; k < 5; k++) {\n    faces.push([0, U(k), U(k + 1)], [U(k), L(k), U(k + 1)], [U(k + 1), L(k), L(k + 1)], [11, L(k + 1), L(k)]);\n  }\n  const factors: number[] = [];\n  for (const [ia, ib, ic] of faces) {\n    const A = ico[ia], B = ico[ib], C = ico[ic];\n    const P = (i: number, j: number): V => {\n      const k = f - i - j;\n      return norm([\n        (k * A[0] + i * B[0] + j * C[0]) / f,\n        (k * A[1] + i * B[1] + j * C[1]) / f,\n        (k * A[2] + i * B[2] + j * C[2]) / f,\n      ]);\n    };\n    for (let i = 0; i < f; i++) {\n      for (let j = 0; j < f - i; j++) {\n        const pts = [P(i, j), P(i + 1, j), P(i, j + 1)];\n        for (let e = 0; e < 3; e++) {\n          const a = pts[e], b = pts[(e + 1) % 3];\n          if (a[2] < -1e-6 || b[2] < -1e-6) continue;\n          const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);\n          if (!factors.some((x) => Math.abs(x - d) < 1e-4)) factors.push(d);\n        }\n      }\n    }\n  }\n  factors.sort((x, y) => x - y);\n  const chordFactor = factors[Math.max(0, Math.min(factors.length - 1, Math.round(ribIndex)))];\n\n  const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n  const s = Math.sin(half), c = Math.cos(half);\n  const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n  if (rCap <= rCore) throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n  if (2 * rCap * c >= chordFactor * R) throw new Error(\"Hubs are too big for this dome: caps would meet\");\n\n  // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n  const uP = [-s, c], uQ = [s, c];\n  const tP = [c, s], tQ = [-c, s];\n  const at = (u: number[], t: number[], radius: number, d: number): [number, number] => [\n    u[0] * radius + t[0] * d,\n    u[1] * radius + t[1] * d,\n  ];\n  const rIn = R - ribDepth;\n\n  const pts: [number, number][] = [\n    at(uP, tP, R, rCore),\n    at(uP, tP, R, rCap),\n    at(uQ, tQ, R, rCap),\n    at(uQ, tQ, R, rCore),\n    at(uQ, tQ, rIn, rCore),\n    at(uQ, tQ, rIn, rCap),\n    at(uP, tP, rIn, rCap),\n    at(uP, tP, rIn, rCore),\n  ];\n  let d = replicad.draw(pts[0]);\n  for (let i = 1; i < pts.length; i++) d = d.lineTo(pts[i]);\n  return new Assembly({ geometry: d.close() });\n}\n",
+          "compiledCode": "\"use strict\";\n/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * ribIndex picks which rib length this is (0 = A, the shortest) among the\n * distinct edge lengths of the chosen frequency's dome. Indexes past the last\n * length reuse the longest; Dome Frame only places the ones the frequency uses.\n *\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(domeDiameter = 4000, frequency = 3, ribIndex = 0, ribDepth = 120, hubDiameter = 300, hubCoreDiameter = 80) {\n    const R = domeDiameter / 2;\n    const f = Math.max(1, Math.min(4, Math.round(frequency)));\n    const norm = (v) => {\n        const l = Math.hypot(v[0], v[1], v[2]);\n        return [v[0] / l, v[1] / l, v[2] / l];\n    };\n    const ico = [[0, 0, 1]];\n    const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n    for (let k = 0; k < 5; k++) {\n        const a = (k * 72 * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n    }\n    for (let k = 0; k < 5; k++) {\n        const a = ((36 + k * 72) * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n    }\n    ico.push([0, 0, -1]);\n    const U = (k) => 1 + (k % 5);\n    const L = (k) => 6 + (k % 5);\n    const faces = [];\n    for (let k = 0; k < 5; k++) {\n        faces.push([0, U(k), U(k + 1)], [U(k), L(k), U(k + 1)], [U(k + 1), L(k), L(k + 1)], [11, L(k + 1), L(k)]);\n    }\n    const factors = [];\n    for (const [ia, ib, ic] of faces) {\n        const A = ico[ia], B = ico[ib], C = ico[ic];\n        const P = (i, j) => {\n            const k = f - i - j;\n            return norm([\n                (k * A[0] + i * B[0] + j * C[0]) / f,\n                (k * A[1] + i * B[1] + j * C[1]) / f,\n                (k * A[2] + i * B[2] + j * C[2]) / f,\n            ]);\n        };\n        for (let i = 0; i < f; i++) {\n            for (let j = 0; j < f - i; j++) {\n                const pts = [P(i, j), P(i + 1, j), P(i, j + 1)];\n                for (let e = 0; e < 3; e++) {\n                    const a = pts[e], b = pts[(e + 1) % 3];\n                    if (a[2] < -1e-6 || b[2] < -1e-6)\n                        continue;\n                    const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);\n                    if (!factors.some((x) => Math.abs(x - d) < 1e-4))\n                        factors.push(d);\n                }\n            }\n        }\n    }\n    factors.sort((x, y) => x - y);\n    const chordFactor = factors[Math.max(0, Math.min(factors.length - 1, Math.round(ribIndex)))];\n    const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n    const s = Math.sin(half), c = Math.cos(half);\n    const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n    if (rCap <= rCore)\n        throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n    if (2 * rCap * c >= chordFactor * R)\n        throw new Error(\"Hubs are too big for this dome: caps would meet\");\n    // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n    const uP = [-s, c], uQ = [s, c];\n    const tP = [c, s], tQ = [-c, s];\n    const at = (u, t, radius, d) => [\n        u[0] * radius + t[0] * d,\n        u[1] * radius + t[1] * d,\n    ];\n    const rIn = R - ribDepth;\n    const pts = [\n        at(uP, tP, R, rCore),\n        at(uP, tP, R, rCap),\n        at(uQ, tQ, R, rCap),\n        at(uQ, tQ, R, rCore),\n        at(uQ, tQ, rIn, rCore),\n        at(uQ, tQ, rIn, rCap),\n        at(uP, tP, rIn, rCap),\n        at(uP, tP, rIn, rCore),\n    ];\n    let d = replicad.draw(pts[0]);\n    for (let i = 1; i < pts.length; i++)\n        d = d.lineTo(pts[i]);\n    return new Assembly({ geometry: d.close() });\n}\n"
+        },
+        {
+          "atomType": "Extrude",
+          "x": 0.6,
+          "y": 0.5,
+          "uniqueID": "id-345",
+          "ioValues": [
+            {
+              "name": "geometry",
+              "ioValue": "__GEOMETRY_INPUT__"
+            },
+            {
+              "name": "height",
+              "ioValue": 18
+            }
+          ]
+        },
+        {
+          "atomType": "Color",
+          "x": 0.7,
+          "y": 0.5,
+          "uniqueID": "id-349",
+          "ioValues": [
+            {
+              "name": "geometry",
+              "ioValue": "__GEOMETRY_INPUT__"
+            }
+          ],
+          "selectedColor": "Orange"
+        },
+        {
+          "atomType": "Tag",
+          "x": 0.9,
+          "y": 0.5,
+          "uniqueID": "id-352",
+          "name": "Rib E",
+          "ioValues": [
+            {
+              "name": "geometry",
+              "ioValue": "__GEOMETRY_INPUT__"
+            }
+          ],
+          "tags": [
+            "Rib E"
+          ]
+        }
+      ],
+      "allConnectors": [
+        {
+          "ap2Name": "domeDiameter",
+          "ap1ID": "id-309",
+          "ap2ID": "id-330"
+        },
+        {
+          "ap2Name": "ribDepth",
+          "ap1ID": "id-312",
+          "ap2ID": "id-330"
+        },
+        {
+          "ap2Name": "hubDiameter",
+          "ap1ID": "id-315",
+          "ap2ID": "id-330"
+        },
+        {
+          "ap2Name": "hubCoreDiameter",
+          "ap1ID": "id-318",
+          "ap2ID": "id-330"
+        },
+        {
+          "ap2Name": "height",
+          "ap1ID": "id-321",
+          "ap2ID": "id-345"
+        },
+        {
+          "ap2Name": "ribIndex",
+          "ap1ID": "id-324",
+          "ap2ID": "id-330"
+        },
+        {
+          "ap2Name": "frequency",
+          "ap1ID": "id-327",
+          "ap2ID": "id-330"
+        },
+        {
+          "ap2Name": "geometry",
+          "ap1ID": "id-330",
+          "ap2ID": "id-345"
+        },
+        {
+          "ap2Name": "geometry",
+          "ap1ID": "id-345",
+          "ap2ID": "id-349"
+        },
+        {
+          "ap2Name": "geometry",
+          "ap1ID": "id-349",
+          "ap2ID": "id-352"
+        },
+        {
+          "ap2Name": "number or geometry",
+          "ap1ID": "id-352",
+          "ap2ID": "id-307"
+        }
+      ],
+      "fileTypeVersion": 1
+    },
+    {
+      "atomType": "Molecule",
       "x": 0.3,
       "y": 0.2,
       "uniqueID": "id-32",
@@ -254,8 +773,12 @@
           "ioValue": 18
         },
         {
-          "name": "Chord Factor",
-          "ioValue": 0.348615
+          "name": "Rib_Index",
+          "ioValue": 0
+        },
+        {
+          "name": "Frequency",
+          "ioValue": 3
         }
       ],
       "topLevel": false,
@@ -288,6 +811,15 @@
           "tags": [
             "Rib A"
           ]
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.7,
+          "uniqueID": "id-240",
+          "name": "Frequency",
+          "type": "number",
+          "options": []
         },
         {
           "atomType": "Output",
@@ -351,7 +883,7 @@
           "x": 0,
           "y": 0.6,
           "uniqueID": "id-82",
-          "name": "Chord Factor",
+          "name": "Rib_Index",
           "type": "number",
           "options": []
         },
@@ -366,10 +898,6 @@
               "ioValue": 4000
             },
             {
-              "name": "chordFactor",
-              "ioValue": 0.348615
-            },
-            {
               "name": "ribDepth",
               "ioValue": 75
             },
@@ -380,11 +908,19 @@
             {
               "name": "hubCoreDiameter",
               "ioValue": 80
+            },
+            {
+              "name": "frequency",
+              "ioValue": 3
+            },
+            {
+              "name": "ribIndex",
+              "ioValue": 0
             }
           ],
           "interpreterVersion": 1,
-          "code": "/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(\n  domeDiameter: number = 4000,\n  chordFactor: number = 0.348615,\n  ribDepth: number = 120,\n  hubDiameter: number = 300,\n  hubCoreDiameter: number = 80,\n): Assembly {\n  const R = domeDiameter / 2;\n  const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n  const s = Math.sin(half), c = Math.cos(half);\n  const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n  if (rCap <= rCore) throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n  if (2 * rCap * c >= chordFactor * R) throw new Error(\"Hubs are too big for this dome: caps would meet\");\n\n  // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n  const uP = [-s, c], uQ = [s, c];\n  const tP = [c, s], tQ = [-c, s];\n  const at = (u: number[], t: number[], radius: number, d: number): [number, number] => [\n    u[0] * radius + t[0] * d,\n    u[1] * radius + t[1] * d,\n  ];\n  const rIn = R - ribDepth;\n\n  const pts: [number, number][] = [\n    at(uP, tP, R, rCore),\n    at(uP, tP, R, rCap),\n    at(uQ, tQ, R, rCap),\n    at(uQ, tQ, R, rCore),\n    at(uQ, tQ, rIn, rCore),\n    at(uQ, tQ, rIn, rCap),\n    at(uP, tP, rIn, rCap),\n    at(uP, tP, rIn, rCore),\n  ];\n  let d = replicad.draw(pts[0]);\n  for (let i = 1; i < pts.length; i++) d = d.lineTo(pts[i]);\n  return new Assembly({ geometry: d.close() });\n}\n",
-          "compiledCode": "\"use strict\";\n/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(domeDiameter = 4000, chordFactor = 0.348615, ribDepth = 120, hubDiameter = 300, hubCoreDiameter = 80) {\n    const R = domeDiameter / 2;\n    const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n    const s = Math.sin(half), c = Math.cos(half);\n    const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n    if (rCap <= rCore)\n        throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n    if (2 * rCap * c >= chordFactor * R)\n        throw new Error(\"Hubs are too big for this dome: caps would meet\");\n    // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n    const uP = [-s, c], uQ = [s, c];\n    const tP = [c, s], tQ = [-c, s];\n    const at = (u, t, radius, d) => [\n        u[0] * radius + t[0] * d,\n        u[1] * radius + t[1] * d,\n    ];\n    const rIn = R - ribDepth;\n    const pts = [\n        at(uP, tP, R, rCore),\n        at(uP, tP, R, rCap),\n        at(uQ, tQ, R, rCap),\n        at(uQ, tQ, R, rCore),\n        at(uQ, tQ, rIn, rCore),\n        at(uQ, tQ, rIn, rCap),\n        at(uP, tP, rIn, rCap),\n        at(uP, tP, rIn, rCore),\n    ];\n    let d = replicad.draw(pts[0]);\n    for (let i = 1; i < pts.length; i++)\n        d = d.lineTo(pts[i]);\n    return new Assembly({ geometry: d.close() });\n}\n"
+          "code": "/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * ribIndex picks which rib length this is (0 = A, the shortest) among the\n * distinct edge lengths of the chosen frequency's dome. Indexes past the last\n * length reuse the longest; Dome Frame only places the ones the frequency uses.\n *\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(\n  domeDiameter: number = 4000,\n  frequency: number = 3,\n  ribIndex: number = 0,\n  ribDepth: number = 120,\n  hubDiameter: number = 300,\n  hubCoreDiameter: number = 80,\n): Assembly {\n  const R = domeDiameter / 2;\n  const f = Math.max(1, Math.min(4, Math.round(frequency)));\n\n  // Distinct chord factors (edge length / radius) of the dome above the equator.\n  // Must match the geodesic in Dome Frame: icosahedron with a vertex on top.\n  type V = [number, number, number];\n  const norm = (v: V): V => {\n    const l = Math.hypot(v[0], v[1], v[2]);\n    return [v[0] / l, v[1] / l, v[2] / l];\n  };\n  const ico: V[] = [[0, 0, 1]];\n  const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n  for (let k = 0; k < 5; k++) {\n    const a = (k * 72 * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n  }\n  for (let k = 0; k < 5; k++) {\n    const a = ((36 + k * 72) * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n  }\n  ico.push([0, 0, -1]);\n  const U = (k: number) => 1 + (k % 5);\n  const L = (k: number) => 6 + (k % 5);\n  const faces: [number, number, number][] = [];\n  for (let k = 0; k < 5; k++) {\n    faces.push([0, U(k), U(k + 1)], [U(k), L(k), U(k + 1)], [U(k + 1), L(k), L(k + 1)], [11, L(k + 1), L(k)]);\n  }\n  const factors: number[] = [];\n  for (const [ia, ib, ic] of faces) {\n    const A = ico[ia], B = ico[ib], C = ico[ic];\n    const P = (i: number, j: number): V => {\n      const k = f - i - j;\n      return norm([\n        (k * A[0] + i * B[0] + j * C[0]) / f,\n        (k * A[1] + i * B[1] + j * C[1]) / f,\n        (k * A[2] + i * B[2] + j * C[2]) / f,\n      ]);\n    };\n    for (let i = 0; i < f; i++) {\n      for (let j = 0; j < f - i; j++) {\n        const pts = [P(i, j), P(i + 1, j), P(i, j + 1)];\n        for (let e = 0; e < 3; e++) {\n          const a = pts[e], b = pts[(e + 1) % 3];\n          if (a[2] < -1e-6 || b[2] < -1e-6) continue;\n          const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);\n          if (!factors.some((x) => Math.abs(x - d) < 1e-4)) factors.push(d);\n        }\n      }\n    }\n  }\n  factors.sort((x, y) => x - y);\n  const chordFactor = factors[Math.max(0, Math.min(factors.length - 1, Math.round(ribIndex)))];\n\n  const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n  const s = Math.sin(half), c = Math.cos(half);\n  const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n  if (rCap <= rCore) throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n  if (2 * rCap * c >= chordFactor * R) throw new Error(\"Hubs are too big for this dome: caps would meet\");\n\n  // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n  const uP = [-s, c], uQ = [s, c];\n  const tP = [c, s], tQ = [-c, s];\n  const at = (u: number[], t: number[], radius: number, d: number): [number, number] => [\n    u[0] * radius + t[0] * d,\n    u[1] * radius + t[1] * d,\n  ];\n  const rIn = R - ribDepth;\n\n  const pts: [number, number][] = [\n    at(uP, tP, R, rCore),\n    at(uP, tP, R, rCap),\n    at(uQ, tQ, R, rCap),\n    at(uQ, tQ, R, rCore),\n    at(uQ, tQ, rIn, rCore),\n    at(uQ, tQ, rIn, rCap),\n    at(uP, tP, rIn, rCap),\n    at(uP, tP, rIn, rCore),\n  ];\n  let d = replicad.draw(pts[0]);\n  for (let i = 1; i < pts.length; i++) d = d.lineTo(pts[i]);\n  return new Assembly({ geometry: d.close() });\n}\n",
+          "compiledCode": "\"use strict\";\n/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * ribIndex picks which rib length this is (0 = A, the shortest) among the\n * distinct edge lengths of the chosen frequency's dome. Indexes past the last\n * length reuse the longest; Dome Frame only places the ones the frequency uses.\n *\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(domeDiameter = 4000, frequency = 3, ribIndex = 0, ribDepth = 120, hubDiameter = 300, hubCoreDiameter = 80) {\n    const R = domeDiameter / 2;\n    const f = Math.max(1, Math.min(4, Math.round(frequency)));\n    const norm = (v) => {\n        const l = Math.hypot(v[0], v[1], v[2]);\n        return [v[0] / l, v[1] / l, v[2] / l];\n    };\n    const ico = [[0, 0, 1]];\n    const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n    for (let k = 0; k < 5; k++) {\n        const a = (k * 72 * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n    }\n    for (let k = 0; k < 5; k++) {\n        const a = ((36 + k * 72) * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n    }\n    ico.push([0, 0, -1]);\n    const U = (k) => 1 + (k % 5);\n    const L = (k) => 6 + (k % 5);\n    const faces = [];\n    for (let k = 0; k < 5; k++) {\n        faces.push([0, U(k), U(k + 1)], [U(k), L(k), U(k + 1)], [U(k + 1), L(k), L(k + 1)], [11, L(k + 1), L(k)]);\n    }\n    const factors = [];\n    for (const [ia, ib, ic] of faces) {\n        const A = ico[ia], B = ico[ib], C = ico[ic];\n        const P = (i, j) => {\n            const k = f - i - j;\n            return norm([\n                (k * A[0] + i * B[0] + j * C[0]) / f,\n                (k * A[1] + i * B[1] + j * C[1]) / f,\n                (k * A[2] + i * B[2] + j * C[2]) / f,\n            ]);\n        };\n        for (let i = 0; i < f; i++) {\n            for (let j = 0; j < f - i; j++) {\n                const pts = [P(i, j), P(i + 1, j), P(i, j + 1)];\n                for (let e = 0; e < 3; e++) {\n                    const a = pts[e], b = pts[(e + 1) % 3];\n                    if (a[2] < -1e-6 || b[2] < -1e-6)\n                        continue;\n                    const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);\n                    if (!factors.some((x) => Math.abs(x - d) < 1e-4))\n                        factors.push(d);\n                }\n            }\n        }\n    }\n    factors.sort((x, y) => x - y);\n    const chordFactor = factors[Math.max(0, Math.min(factors.length - 1, Math.round(ribIndex)))];\n    const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n    const s = Math.sin(half), c = Math.cos(half);\n    const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n    if (rCap <= rCore)\n        throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n    if (2 * rCap * c >= chordFactor * R)\n        throw new Error(\"Hubs are too big for this dome: caps would meet\");\n    // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n    const uP = [-s, c], uQ = [s, c];\n    const tP = [c, s], tQ = [-c, s];\n    const at = (u, t, radius, d) => [\n        u[0] * radius + t[0] * d,\n        u[1] * radius + t[1] * d,\n    ];\n    const rIn = R - ribDepth;\n    const pts = [\n        at(uP, tP, R, rCore),\n        at(uP, tP, R, rCap),\n        at(uQ, tQ, R, rCap),\n        at(uQ, tQ, R, rCore),\n        at(uQ, tQ, rIn, rCore),\n        at(uQ, tQ, rIn, rCap),\n        at(uP, tP, rIn, rCap),\n        at(uP, tP, rIn, rCore),\n    ];\n    let d = replicad.draw(pts[0]);\n    for (let i = 1; i < pts.length; i++)\n        d = d.lineTo(pts[i]);\n    return new Assembly({ geometry: d.close() });\n}\n"
         },
         {
           "atomType": "Extrude",
@@ -430,7 +966,7 @@
           "ap2ID": "id-99"
         },
         {
-          "ap2Name": "chordFactor",
+          "ap2Name": "ribIndex",
           "ap1ID": "id-82",
           "ap2ID": "id-85"
         },
@@ -453,6 +989,264 @@
           "ap2Name": "number or geometry",
           "ap1ID": "id-106",
           "ap2ID": "id-34"
+        },
+        {
+          "ap2Name": "frequency",
+          "ap1ID": "id-240",
+          "ap2ID": "id-85"
+        }
+      ],
+      "fileTypeVersion": 1
+    },
+    {
+      "atomType": "Molecule",
+      "x": 0.4,
+      "y": 0.6,
+      "uniqueID": "id-355",
+      "name": "Rib F",
+      "ioValues": [
+        {
+          "name": "Dome Diameter",
+          "ioValue": 4000
+        },
+        {
+          "name": "Rib Depth",
+          "ioValue": 75
+        },
+        {
+          "name": "Hub Diameter",
+          "ioValue": 100
+        },
+        {
+          "name": "Hub Core Diameter",
+          "ioValue": 80
+        },
+        {
+          "name": "Plywood Thickness",
+          "ioValue": 18
+        },
+        {
+          "name": "Rib Index",
+          "ioValue": 5
+        },
+        {
+          "name": "Frequency",
+          "ioValue": 3
+        }
+      ],
+      "topLevel": false,
+      "allAtoms": [
+        {
+          "atomType": "Output",
+          "x": 1,
+          "y": 0.5,
+          "uniqueID": "id-357",
+          "ioValues": [
+            {
+              "name": "number or geometry",
+              "ioValue": "__GEOMETRY_INPUT__"
+            }
+          ]
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.2,
+          "uniqueID": "id-359",
+          "name": "Dome Diameter",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.2,
+          "uniqueID": "id-362",
+          "name": "Rib Depth",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.3,
+          "uniqueID": "id-365",
+          "name": "Hub Diameter",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.4,
+          "uniqueID": "id-368",
+          "name": "Hub Core Diameter",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.5,
+          "uniqueID": "id-371",
+          "name": "Plywood Thickness",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.6,
+          "uniqueID": "id-374",
+          "name": "Rib Index",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.7,
+          "uniqueID": "id-377",
+          "name": "Frequency",
+          "type": "number",
+          "options": []
+        },
+        {
+          "atomType": "Code",
+          "x": 0.4,
+          "y": 0.4,
+          "uniqueID": "id-380",
+          "ioValues": [
+            {
+              "name": "domeDiameter",
+              "ioValue": 4000
+            },
+            {
+              "name": "frequency",
+              "ioValue": 3
+            },
+            {
+              "name": "ribIndex",
+              "ioValue": 5
+            },
+            {
+              "name": "ribDepth",
+              "ioValue": 75
+            },
+            {
+              "name": "hubDiameter",
+              "ioValue": 100
+            },
+            {
+              "name": "hubCoreDiameter",
+              "ioValue": 80
+            }
+          ],
+          "interpreterVersion": 1,
+          "code": "/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * ribIndex picks which rib length this is (0 = A, the shortest) among the\n * distinct edge lengths of the chosen frequency's dome. Indexes past the last\n * length reuse the longest; Dome Frame only places the ones the frequency uses.\n *\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(\n  domeDiameter: number = 4000,\n  frequency: number = 3,\n  ribIndex: number = 0,\n  ribDepth: number = 120,\n  hubDiameter: number = 300,\n  hubCoreDiameter: number = 80,\n): Assembly {\n  const R = domeDiameter / 2;\n  const f = Math.max(1, Math.min(4, Math.round(frequency)));\n\n  // Distinct chord factors (edge length / radius) of the dome above the equator.\n  // Must match the geodesic in Dome Frame: icosahedron with a vertex on top.\n  type V = [number, number, number];\n  const norm = (v: V): V => {\n    const l = Math.hypot(v[0], v[1], v[2]);\n    return [v[0] / l, v[1] / l, v[2] / l];\n  };\n  const ico: V[] = [[0, 0, 1]];\n  const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n  for (let k = 0; k < 5; k++) {\n    const a = (k * 72 * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n  }\n  for (let k = 0; k < 5; k++) {\n    const a = ((36 + k * 72) * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n  }\n  ico.push([0, 0, -1]);\n  const U = (k: number) => 1 + (k % 5);\n  const L = (k: number) => 6 + (k % 5);\n  const faces: [number, number, number][] = [];\n  for (let k = 0; k < 5; k++) {\n    faces.push([0, U(k), U(k + 1)], [U(k), L(k), U(k + 1)], [U(k + 1), L(k), L(k + 1)], [11, L(k + 1), L(k)]);\n  }\n  const factors: number[] = [];\n  for (const [ia, ib, ic] of faces) {\n    const A = ico[ia], B = ico[ib], C = ico[ic];\n    const P = (i: number, j: number): V => {\n      const k = f - i - j;\n      return norm([\n        (k * A[0] + i * B[0] + j * C[0]) / f,\n        (k * A[1] + i * B[1] + j * C[1]) / f,\n        (k * A[2] + i * B[2] + j * C[2]) / f,\n      ]);\n    };\n    for (let i = 0; i < f; i++) {\n      for (let j = 0; j < f - i; j++) {\n        const pts = [P(i, j), P(i + 1, j), P(i, j + 1)];\n        for (let e = 0; e < 3; e++) {\n          const a = pts[e], b = pts[(e + 1) % 3];\n          if (a[2] < -1e-6 || b[2] < -1e-6) continue;\n          const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);\n          if (!factors.some((x) => Math.abs(x - d) < 1e-4)) factors.push(d);\n        }\n      }\n    }\n  }\n  factors.sort((x, y) => x - y);\n  const chordFactor = factors[Math.max(0, Math.min(factors.length - 1, Math.round(ribIndex)))];\n\n  const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n  const s = Math.sin(half), c = Math.cos(half);\n  const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n  if (rCap <= rCore) throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n  if (2 * rCap * c >= chordFactor * R) throw new Error(\"Hubs are too big for this dome: caps would meet\");\n\n  // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n  const uP = [-s, c], uQ = [s, c];\n  const tP = [c, s], tQ = [-c, s];\n  const at = (u: number[], t: number[], radius: number, d: number): [number, number] => [\n    u[0] * radius + t[0] * d,\n    u[1] * radius + t[1] * d,\n  ];\n  const rIn = R - ribDepth;\n\n  const pts: [number, number][] = [\n    at(uP, tP, R, rCore),\n    at(uP, tP, R, rCap),\n    at(uQ, tQ, R, rCap),\n    at(uQ, tQ, R, rCore),\n    at(uQ, tQ, rIn, rCore),\n    at(uQ, tQ, rIn, rCap),\n    at(uP, tP, rIn, rCap),\n    at(uP, tP, rIn, rCore),\n  ];\n  let d = replicad.draw(pts[0]);\n  for (let i = 1; i < pts.length; i++) d = d.lineTo(pts[i]);\n  return new Assembly({ geometry: d.close() });\n}\n",
+          "compiledCode": "\"use strict\";\n/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * ribIndex picks which rib length this is (0 = A, the shortest) among the\n * distinct edge lengths of the chosen frequency's dome. Indexes past the last\n * length reuse the longest; Dome Frame only places the ones the frequency uses.\n *\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(domeDiameter = 4000, frequency = 3, ribIndex = 0, ribDepth = 120, hubDiameter = 300, hubCoreDiameter = 80) {\n    const R = domeDiameter / 2;\n    const f = Math.max(1, Math.min(4, Math.round(frequency)));\n    const norm = (v) => {\n        const l = Math.hypot(v[0], v[1], v[2]);\n        return [v[0] / l, v[1] / l, v[2] / l];\n    };\n    const ico = [[0, 0, 1]];\n    const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n    for (let k = 0; k < 5; k++) {\n        const a = (k * 72 * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n    }\n    for (let k = 0; k < 5; k++) {\n        const a = ((36 + k * 72) * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n    }\n    ico.push([0, 0, -1]);\n    const U = (k) => 1 + (k % 5);\n    const L = (k) => 6 + (k % 5);\n    const faces = [];\n    for (let k = 0; k < 5; k++) {\n        faces.push([0, U(k), U(k + 1)], [U(k), L(k), U(k + 1)], [U(k + 1), L(k), L(k + 1)], [11, L(k + 1), L(k)]);\n    }\n    const factors = [];\n    for (const [ia, ib, ic] of faces) {\n        const A = ico[ia], B = ico[ib], C = ico[ic];\n        const P = (i, j) => {\n            const k = f - i - j;\n            return norm([\n                (k * A[0] + i * B[0] + j * C[0]) / f,\n                (k * A[1] + i * B[1] + j * C[1]) / f,\n                (k * A[2] + i * B[2] + j * C[2]) / f,\n            ]);\n        };\n        for (let i = 0; i < f; i++) {\n            for (let j = 0; j < f - i; j++) {\n                const pts = [P(i, j), P(i + 1, j), P(i, j + 1)];\n                for (let e = 0; e < 3; e++) {\n                    const a = pts[e], b = pts[(e + 1) % 3];\n                    if (a[2] < -1e-6 || b[2] < -1e-6)\n                        continue;\n                    const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);\n                    if (!factors.some((x) => Math.abs(x - d) < 1e-4))\n                        factors.push(d);\n                }\n            }\n        }\n    }\n    factors.sort((x, y) => x - y);\n    const chordFactor = factors[Math.max(0, Math.min(factors.length - 1, Math.round(ribIndex)))];\n    const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n    const s = Math.sin(half), c = Math.cos(half);\n    const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n    if (rCap <= rCore)\n        throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n    if (2 * rCap * c >= chordFactor * R)\n        throw new Error(\"Hubs are too big for this dome: caps would meet\");\n    // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n    const uP = [-s, c], uQ = [s, c];\n    const tP = [c, s], tQ = [-c, s];\n    const at = (u, t, radius, d) => [\n        u[0] * radius + t[0] * d,\n        u[1] * radius + t[1] * d,\n    ];\n    const rIn = R - ribDepth;\n    const pts = [\n        at(uP, tP, R, rCore),\n        at(uP, tP, R, rCap),\n        at(uQ, tQ, R, rCap),\n        at(uQ, tQ, R, rCore),\n        at(uQ, tQ, rIn, rCore),\n        at(uQ, tQ, rIn, rCap),\n        at(uP, tP, rIn, rCap),\n        at(uP, tP, rIn, rCore),\n    ];\n    let d = replicad.draw(pts[0]);\n    for (let i = 1; i < pts.length; i++)\n        d = d.lineTo(pts[i]);\n    return new Assembly({ geometry: d.close() });\n}\n"
+        },
+        {
+          "atomType": "Extrude",
+          "x": 0.6,
+          "y": 0.5,
+          "uniqueID": "id-395",
+          "ioValues": [
+            {
+              "name": "geometry",
+              "ioValue": "__GEOMETRY_INPUT__"
+            },
+            {
+              "name": "height",
+              "ioValue": 18
+            }
+          ]
+        },
+        {
+          "atomType": "Color",
+          "x": 0.7,
+          "y": 0.5,
+          "uniqueID": "id-399",
+          "ioValues": [
+            {
+              "name": "geometry",
+              "ioValue": "__GEOMETRY_INPUT__"
+            }
+          ],
+          "selectedColor": "Pink"
+        },
+        {
+          "atomType": "Tag",
+          "x": 0.9,
+          "y": 0.5,
+          "uniqueID": "id-402",
+          "name": "Rib F",
+          "ioValues": [
+            {
+              "name": "geometry",
+              "ioValue": "__GEOMETRY_INPUT__"
+            }
+          ],
+          "tags": [
+            "Rib F"
+          ]
+        }
+      ],
+      "allConnectors": [
+        {
+          "ap2Name": "domeDiameter",
+          "ap1ID": "id-359",
+          "ap2ID": "id-380"
+        },
+        {
+          "ap2Name": "ribDepth",
+          "ap1ID": "id-362",
+          "ap2ID": "id-380"
+        },
+        {
+          "ap2Name": "hubDiameter",
+          "ap1ID": "id-365",
+          "ap2ID": "id-380"
+        },
+        {
+          "ap2Name": "hubCoreDiameter",
+          "ap1ID": "id-368",
+          "ap2ID": "id-380"
+        },
+        {
+          "ap2Name": "height",
+          "ap1ID": "id-371",
+          "ap2ID": "id-395"
+        },
+        {
+          "ap2Name": "ribIndex",
+          "ap1ID": "id-374",
+          "ap2ID": "id-380"
+        },
+        {
+          "ap2Name": "frequency",
+          "ap1ID": "id-377",
+          "ap2ID": "id-380"
+        },
+        {
+          "ap2Name": "geometry",
+          "ap1ID": "id-380",
+          "ap2ID": "id-395"
+        },
+        {
+          "ap2Name": "geometry",
+          "ap1ID": "id-395",
+          "ap2ID": "id-399"
+        },
+        {
+          "ap2Name": "geometry",
+          "ap1ID": "id-399",
+          "ap2ID": "id-402"
+        },
+        {
+          "ap2Name": "number or geometry",
+          "ap1ID": "id-402",
+          "ap2ID": "id-357"
         }
       ],
       "fileTypeVersion": 1
@@ -485,8 +1279,12 @@
           "ioValue": 18
         },
         {
-          "name": "Chord Factor",
-          "ioValue": 0.403548
+          "name": "Rib_Index",
+          "ioValue": 1
+        },
+        {
+          "name": "Frequency",
+          "ioValue": 3
         }
       ],
       "topLevel": false,
@@ -541,7 +1339,7 @@
           "x": 0,
           "y": 0.6,
           "uniqueID": "id-124",
-          "name": "Chord Factor",
+          "name": "Rib_Index",
           "type": "number",
           "options": []
         },
@@ -556,10 +1354,6 @@
               "ioValue": 4000
             },
             {
-              "name": "chordFactor",
-              "ioValue": 0.403548
-            },
-            {
               "name": "ribDepth",
               "ioValue": 75
             },
@@ -570,11 +1364,19 @@
             {
               "name": "hubCoreDiameter",
               "ioValue": 80
+            },
+            {
+              "name": "frequency",
+              "ioValue": 3
+            },
+            {
+              "name": "ribIndex",
+              "ioValue": 1
             }
           ],
           "interpreterVersion": 1,
-          "code": "/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(\n  domeDiameter: number = 4000,\n  chordFactor: number = 0.348615,\n  ribDepth: number = 120,\n  hubDiameter: number = 300,\n  hubCoreDiameter: number = 80,\n): Assembly {\n  const R = domeDiameter / 2;\n  const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n  const s = Math.sin(half), c = Math.cos(half);\n  const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n  if (rCap <= rCore) throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n  if (2 * rCap * c >= chordFactor * R) throw new Error(\"Hubs are too big for this dome: caps would meet\");\n\n  // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n  const uP = [-s, c], uQ = [s, c];\n  const tP = [c, s], tQ = [-c, s];\n  const at = (u: number[], t: number[], radius: number, d: number): [number, number] => [\n    u[0] * radius + t[0] * d,\n    u[1] * radius + t[1] * d,\n  ];\n  const rIn = R - ribDepth;\n\n  const pts: [number, number][] = [\n    at(uP, tP, R, rCore),\n    at(uP, tP, R, rCap),\n    at(uQ, tQ, R, rCap),\n    at(uQ, tQ, R, rCore),\n    at(uQ, tQ, rIn, rCore),\n    at(uQ, tQ, rIn, rCap),\n    at(uP, tP, rIn, rCap),\n    at(uP, tP, rIn, rCore),\n  ];\n  let d = replicad.draw(pts[0]);\n  for (let i = 1; i < pts.length; i++) d = d.lineTo(pts[i]);\n  return new Assembly({ geometry: d.close() });\n}\n",
-          "compiledCode": "\"use strict\";\n/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(domeDiameter = 4000, chordFactor = 0.348615, ribDepth = 120, hubDiameter = 300, hubCoreDiameter = 80) {\n    const R = domeDiameter / 2;\n    const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n    const s = Math.sin(half), c = Math.cos(half);\n    const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n    if (rCap <= rCore)\n        throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n    if (2 * rCap * c >= chordFactor * R)\n        throw new Error(\"Hubs are too big for this dome: caps would meet\");\n    // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n    const uP = [-s, c], uQ = [s, c];\n    const tP = [c, s], tQ = [-c, s];\n    const at = (u, t, radius, d) => [\n        u[0] * radius + t[0] * d,\n        u[1] * radius + t[1] * d,\n    ];\n    const rIn = R - ribDepth;\n    const pts = [\n        at(uP, tP, R, rCore),\n        at(uP, tP, R, rCap),\n        at(uQ, tQ, R, rCap),\n        at(uQ, tQ, R, rCore),\n        at(uQ, tQ, rIn, rCore),\n        at(uQ, tQ, rIn, rCap),\n        at(uP, tP, rIn, rCap),\n        at(uP, tP, rIn, rCore),\n    ];\n    let d = replicad.draw(pts[0]);\n    for (let i = 1; i < pts.length; i++)\n        d = d.lineTo(pts[i]);\n    return new Assembly({ geometry: d.close() });\n}\n"
+          "code": "/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * ribIndex picks which rib length this is (0 = A, the shortest) among the\n * distinct edge lengths of the chosen frequency's dome. Indexes past the last\n * length reuse the longest; Dome Frame only places the ones the frequency uses.\n *\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(\n  domeDiameter: number = 4000,\n  frequency: number = 3,\n  ribIndex: number = 0,\n  ribDepth: number = 120,\n  hubDiameter: number = 300,\n  hubCoreDiameter: number = 80,\n): Assembly {\n  const R = domeDiameter / 2;\n  const f = Math.max(1, Math.min(4, Math.round(frequency)));\n\n  // Distinct chord factors (edge length / radius) of the dome above the equator.\n  // Must match the geodesic in Dome Frame: icosahedron with a vertex on top.\n  type V = [number, number, number];\n  const norm = (v: V): V => {\n    const l = Math.hypot(v[0], v[1], v[2]);\n    return [v[0] / l, v[1] / l, v[2] / l];\n  };\n  const ico: V[] = [[0, 0, 1]];\n  const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n  for (let k = 0; k < 5; k++) {\n    const a = (k * 72 * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n  }\n  for (let k = 0; k < 5; k++) {\n    const a = ((36 + k * 72) * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n  }\n  ico.push([0, 0, -1]);\n  const U = (k: number) => 1 + (k % 5);\n  const L = (k: number) => 6 + (k % 5);\n  const faces: [number, number, number][] = [];\n  for (let k = 0; k < 5; k++) {\n    faces.push([0, U(k), U(k + 1)], [U(k), L(k), U(k + 1)], [U(k + 1), L(k), L(k + 1)], [11, L(k + 1), L(k)]);\n  }\n  const factors: number[] = [];\n  for (const [ia, ib, ic] of faces) {\n    const A = ico[ia], B = ico[ib], C = ico[ic];\n    const P = (i: number, j: number): V => {\n      const k = f - i - j;\n      return norm([\n        (k * A[0] + i * B[0] + j * C[0]) / f,\n        (k * A[1] + i * B[1] + j * C[1]) / f,\n        (k * A[2] + i * B[2] + j * C[2]) / f,\n      ]);\n    };\n    for (let i = 0; i < f; i++) {\n      for (let j = 0; j < f - i; j++) {\n        const pts = [P(i, j), P(i + 1, j), P(i, j + 1)];\n        for (let e = 0; e < 3; e++) {\n          const a = pts[e], b = pts[(e + 1) % 3];\n          if (a[2] < -1e-6 || b[2] < -1e-6) continue;\n          const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);\n          if (!factors.some((x) => Math.abs(x - d) < 1e-4)) factors.push(d);\n        }\n      }\n    }\n  }\n  factors.sort((x, y) => x - y);\n  const chordFactor = factors[Math.max(0, Math.min(factors.length - 1, Math.round(ribIndex)))];\n\n  const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n  const s = Math.sin(half), c = Math.cos(half);\n  const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n  if (rCap <= rCore) throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n  if (2 * rCap * c >= chordFactor * R) throw new Error(\"Hubs are too big for this dome: caps would meet\");\n\n  // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n  const uP = [-s, c], uQ = [s, c];\n  const tP = [c, s], tQ = [-c, s];\n  const at = (u: number[], t: number[], radius: number, d: number): [number, number] => [\n    u[0] * radius + t[0] * d,\n    u[1] * radius + t[1] * d,\n  ];\n  const rIn = R - ribDepth;\n\n  const pts: [number, number][] = [\n    at(uP, tP, R, rCore),\n    at(uP, tP, R, rCap),\n    at(uQ, tQ, R, rCap),\n    at(uQ, tQ, R, rCore),\n    at(uQ, tQ, rIn, rCore),\n    at(uQ, tQ, rIn, rCap),\n    at(uP, tP, rIn, rCap),\n    at(uP, tP, rIn, rCore),\n  ];\n  let d = replicad.draw(pts[0]);\n  for (let i = 1; i < pts.length; i++) d = d.lineTo(pts[i]);\n  return new Assembly({ geometry: d.close() });\n}\n",
+          "compiledCode": "\"use strict\";\n/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * ribIndex picks which rib length this is (0 = A, the shortest) among the\n * distinct edge lengths of the chosen frequency's dome. Indexes past the last\n * length reuse the longest; Dome Frame only places the ones the frequency uses.\n *\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(domeDiameter = 4000, frequency = 3, ribIndex = 0, ribDepth = 120, hubDiameter = 300, hubCoreDiameter = 80) {\n    const R = domeDiameter / 2;\n    const f = Math.max(1, Math.min(4, Math.round(frequency)));\n    const norm = (v) => {\n        const l = Math.hypot(v[0], v[1], v[2]);\n        return [v[0] / l, v[1] / l, v[2] / l];\n    };\n    const ico = [[0, 0, 1]];\n    const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n    for (let k = 0; k < 5; k++) {\n        const a = (k * 72 * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n    }\n    for (let k = 0; k < 5; k++) {\n        const a = ((36 + k * 72) * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n    }\n    ico.push([0, 0, -1]);\n    const U = (k) => 1 + (k % 5);\n    const L = (k) => 6 + (k % 5);\n    const faces = [];\n    for (let k = 0; k < 5; k++) {\n        faces.push([0, U(k), U(k + 1)], [U(k), L(k), U(k + 1)], [U(k + 1), L(k), L(k + 1)], [11, L(k + 1), L(k)]);\n    }\n    const factors = [];\n    for (const [ia, ib, ic] of faces) {\n        const A = ico[ia], B = ico[ib], C = ico[ic];\n        const P = (i, j) => {\n            const k = f - i - j;\n            return norm([\n                (k * A[0] + i * B[0] + j * C[0]) / f,\n                (k * A[1] + i * B[1] + j * C[1]) / f,\n                (k * A[2] + i * B[2] + j * C[2]) / f,\n            ]);\n        };\n        for (let i = 0; i < f; i++) {\n            for (let j = 0; j < f - i; j++) {\n                const pts = [P(i, j), P(i + 1, j), P(i, j + 1)];\n                for (let e = 0; e < 3; e++) {\n                    const a = pts[e], b = pts[(e + 1) % 3];\n                    if (a[2] < -1e-6 || b[2] < -1e-6)\n                        continue;\n                    const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);\n                    if (!factors.some((x) => Math.abs(x - d) < 1e-4))\n                        factors.push(d);\n                }\n            }\n        }\n    }\n    factors.sort((x, y) => x - y);\n    const chordFactor = factors[Math.max(0, Math.min(factors.length - 1, Math.round(ribIndex)))];\n    const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n    const s = Math.sin(half), c = Math.cos(half);\n    const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n    if (rCap <= rCore)\n        throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n    if (2 * rCap * c >= chordFactor * R)\n        throw new Error(\"Hubs are too big for this dome: caps would meet\");\n    // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n    const uP = [-s, c], uQ = [s, c];\n    const tP = [c, s], tQ = [-c, s];\n    const at = (u, t, radius, d) => [\n        u[0] * radius + t[0] * d,\n        u[1] * radius + t[1] * d,\n    ];\n    const rIn = R - ribDepth;\n    const pts = [\n        at(uP, tP, R, rCore),\n        at(uP, tP, R, rCap),\n        at(uQ, tQ, R, rCap),\n        at(uQ, tQ, R, rCore),\n        at(uQ, tQ, rIn, rCore),\n        at(uQ, tQ, rIn, rCap),\n        at(uP, tP, rIn, rCap),\n        at(uP, tP, rIn, rCore),\n    ];\n    let d = replicad.draw(pts[0]);\n    for (let i = 1; i < pts.length; i++)\n        d = d.lineTo(pts[i]);\n    return new Assembly({ geometry: d.close() });\n}\n"
         },
         {
           "atomType": "Extrude",
@@ -622,6 +1424,15 @@
           ]
         },
         {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.7,
+          "uniqueID": "id-245",
+          "name": "Frequency",
+          "type": "number",
+          "options": []
+        },
+        {
           "atomType": "Output",
           "x": 1,
           "y": 0.5,
@@ -661,7 +1472,7 @@
           "ap2ID": "id-141"
         },
         {
-          "ap2Name": "chordFactor",
+          "ap2Name": "ribIndex",
           "ap1ID": "id-124",
           "ap2ID": "id-127"
         },
@@ -684,6 +1495,11 @@
           "ap2Name": "number or geometry",
           "ap1ID": "id-148",
           "ap2ID": "id-38"
+        },
+        {
+          "ap2Name": "frequency",
+          "ap1ID": "id-245",
+          "ap2ID": "id-127"
         }
       ],
       "fileTypeVersion": 1
@@ -716,8 +1532,12 @@
           "ioValue": 18
         },
         {
-          "name": "Chord Factor",
-          "ioValue": 0.412411
+          "name": "Rib_Index",
+          "ioValue": 2
+        },
+        {
+          "name": "Frequency",
+          "ioValue": 3
         }
       ],
       "topLevel": false,
@@ -772,7 +1592,7 @@
           "x": 0,
           "y": 0.6,
           "uniqueID": "id-166",
-          "name": "Chord Factor",
+          "name": "Rib_Index",
           "type": "number",
           "options": []
         },
@@ -787,10 +1607,6 @@
               "ioValue": 4000
             },
             {
-              "name": "chordFactor",
-              "ioValue": 0.412411
-            },
-            {
               "name": "ribDepth",
               "ioValue": 75
             },
@@ -801,11 +1617,19 @@
             {
               "name": "hubCoreDiameter",
               "ioValue": 80
+            },
+            {
+              "name": "frequency",
+              "ioValue": 3
+            },
+            {
+              "name": "ribIndex",
+              "ioValue": 2
             }
           ],
           "interpreterVersion": 1,
-          "code": "/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(\n  domeDiameter: number = 4000,\n  chordFactor: number = 0.348615,\n  ribDepth: number = 120,\n  hubDiameter: number = 300,\n  hubCoreDiameter: number = 80,\n): Assembly {\n  const R = domeDiameter / 2;\n  const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n  const s = Math.sin(half), c = Math.cos(half);\n  const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n  if (rCap <= rCore) throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n  if (2 * rCap * c >= chordFactor * R) throw new Error(\"Hubs are too big for this dome: caps would meet\");\n\n  // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n  const uP = [-s, c], uQ = [s, c];\n  const tP = [c, s], tQ = [-c, s];\n  const at = (u: number[], t: number[], radius: number, d: number): [number, number] => [\n    u[0] * radius + t[0] * d,\n    u[1] * radius + t[1] * d,\n  ];\n  const rIn = R - ribDepth;\n\n  const pts: [number, number][] = [\n    at(uP, tP, R, rCore),\n    at(uP, tP, R, rCap),\n    at(uQ, tQ, R, rCap),\n    at(uQ, tQ, R, rCore),\n    at(uQ, tQ, rIn, rCore),\n    at(uQ, tQ, rIn, rCap),\n    at(uP, tP, rIn, rCap),\n    at(uP, tP, rIn, rCore),\n  ];\n  let d = replicad.draw(pts[0]);\n  for (let i = 1; i < pts.length; i++) d = d.lineTo(pts[i]);\n  return new Assembly({ geometry: d.close() });\n}\n",
-          "compiledCode": "\"use strict\";\n/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(domeDiameter = 4000, chordFactor = 0.348615, ribDepth = 120, hubDiameter = 300, hubCoreDiameter = 80) {\n    const R = domeDiameter / 2;\n    const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n    const s = Math.sin(half), c = Math.cos(half);\n    const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n    if (rCap <= rCore)\n        throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n    if (2 * rCap * c >= chordFactor * R)\n        throw new Error(\"Hubs are too big for this dome: caps would meet\");\n    // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n    const uP = [-s, c], uQ = [s, c];\n    const tP = [c, s], tQ = [-c, s];\n    const at = (u, t, radius, d) => [\n        u[0] * radius + t[0] * d,\n        u[1] * radius + t[1] * d,\n    ];\n    const rIn = R - ribDepth;\n    const pts = [\n        at(uP, tP, R, rCore),\n        at(uP, tP, R, rCap),\n        at(uQ, tQ, R, rCap),\n        at(uQ, tQ, R, rCore),\n        at(uQ, tQ, rIn, rCore),\n        at(uQ, tQ, rIn, rCap),\n        at(uP, tP, rIn, rCap),\n        at(uP, tP, rIn, rCore),\n    ];\n    let d = replicad.draw(pts[0]);\n    for (let i = 1; i < pts.length; i++)\n        d = d.lineTo(pts[i]);\n    return new Assembly({ geometry: d.close() });\n}\n"
+          "code": "/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * ribIndex picks which rib length this is (0 = A, the shortest) among the\n * distinct edge lengths of the chosen frequency's dome. Indexes past the last\n * length reuse the longest; Dome Frame only places the ones the frequency uses.\n *\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(\n  domeDiameter: number = 4000,\n  frequency: number = 3,\n  ribIndex: number = 0,\n  ribDepth: number = 120,\n  hubDiameter: number = 300,\n  hubCoreDiameter: number = 80,\n): Assembly {\n  const R = domeDiameter / 2;\n  const f = Math.max(1, Math.min(4, Math.round(frequency)));\n\n  // Distinct chord factors (edge length / radius) of the dome above the equator.\n  // Must match the geodesic in Dome Frame: icosahedron with a vertex on top.\n  type V = [number, number, number];\n  const norm = (v: V): V => {\n    const l = Math.hypot(v[0], v[1], v[2]);\n    return [v[0] / l, v[1] / l, v[2] / l];\n  };\n  const ico: V[] = [[0, 0, 1]];\n  const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n  for (let k = 0; k < 5; k++) {\n    const a = (k * 72 * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n  }\n  for (let k = 0; k < 5; k++) {\n    const a = ((36 + k * 72) * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n  }\n  ico.push([0, 0, -1]);\n  const U = (k: number) => 1 + (k % 5);\n  const L = (k: number) => 6 + (k % 5);\n  const faces: [number, number, number][] = [];\n  for (let k = 0; k < 5; k++) {\n    faces.push([0, U(k), U(k + 1)], [U(k), L(k), U(k + 1)], [U(k + 1), L(k), L(k + 1)], [11, L(k + 1), L(k)]);\n  }\n  const factors: number[] = [];\n  for (const [ia, ib, ic] of faces) {\n    const A = ico[ia], B = ico[ib], C = ico[ic];\n    const P = (i: number, j: number): V => {\n      const k = f - i - j;\n      return norm([\n        (k * A[0] + i * B[0] + j * C[0]) / f,\n        (k * A[1] + i * B[1] + j * C[1]) / f,\n        (k * A[2] + i * B[2] + j * C[2]) / f,\n      ]);\n    };\n    for (let i = 0; i < f; i++) {\n      for (let j = 0; j < f - i; j++) {\n        const pts = [P(i, j), P(i + 1, j), P(i, j + 1)];\n        for (let e = 0; e < 3; e++) {\n          const a = pts[e], b = pts[(e + 1) % 3];\n          if (a[2] < -1e-6 || b[2] < -1e-6) continue;\n          const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);\n          if (!factors.some((x) => Math.abs(x - d) < 1e-4)) factors.push(d);\n        }\n      }\n    }\n  }\n  factors.sort((x, y) => x - y);\n  const chordFactor = factors[Math.max(0, Math.min(factors.length - 1, Math.round(ribIndex)))];\n\n  const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n  const s = Math.sin(half), c = Math.cos(half);\n  const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n  if (rCap <= rCore) throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n  if (2 * rCap * c >= chordFactor * R) throw new Error(\"Hubs are too big for this dome: caps would meet\");\n\n  // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n  const uP = [-s, c], uQ = [s, c];\n  const tP = [c, s], tQ = [-c, s];\n  const at = (u: number[], t: number[], radius: number, d: number): [number, number] => [\n    u[0] * radius + t[0] * d,\n    u[1] * radius + t[1] * d,\n  ];\n  const rIn = R - ribDepth;\n\n  const pts: [number, number][] = [\n    at(uP, tP, R, rCore),\n    at(uP, tP, R, rCap),\n    at(uQ, tQ, R, rCap),\n    at(uQ, tQ, R, rCore),\n    at(uQ, tQ, rIn, rCore),\n    at(uQ, tQ, rIn, rCap),\n    at(uP, tP, rIn, rCap),\n    at(uP, tP, rIn, rCore),\n  ];\n  let d = replicad.draw(pts[0]);\n  for (let i = 1; i < pts.length; i++) d = d.lineTo(pts[i]);\n  return new Assembly({ geometry: d.close() });\n}\n",
+          "compiledCode": "\"use strict\";\n/**\n * Flat 2D outline of one dome rib, drawn in the rib's own plane.\n * ribIndex picks which rib length this is (0 = A, the shortest) among the\n * distinct edge lengths of the chosen frequency's dome. Indexes past the last\n * length reuse the longest; Dome Frame only places the ones the frequency uses.\n *\n * The rib stands in the plane through the dome center and its edge, so it is\n * a flat part. Origin = dome center, +Y = toward the middle of the edge.\n * Near each end the outer and inner edges follow the hub cap planes (which are\n * perpendicular to the hub's radial axis) out to the cap radius, so the caps\n * sit flat on the rib. The ends stop at the hub core, parallel to the axis.\n */\nfunction run(domeDiameter = 4000, frequency = 3, ribIndex = 0, ribDepth = 120, hubDiameter = 300, hubCoreDiameter = 80) {\n    const R = domeDiameter / 2;\n    const f = Math.max(1, Math.min(4, Math.round(frequency)));\n    const norm = (v) => {\n        const l = Math.hypot(v[0], v[1], v[2]);\n        return [v[0] / l, v[1] / l, v[2] / l];\n    };\n    const ico = [[0, 0, 1]];\n    const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n    for (let k = 0; k < 5; k++) {\n        const a = (k * 72 * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n    }\n    for (let k = 0; k < 5; k++) {\n        const a = ((36 + k * 72) * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n    }\n    ico.push([0, 0, -1]);\n    const U = (k) => 1 + (k % 5);\n    const L = (k) => 6 + (k % 5);\n    const faces = [];\n    for (let k = 0; k < 5; k++) {\n        faces.push([0, U(k), U(k + 1)], [U(k), L(k), U(k + 1)], [U(k + 1), L(k), L(k + 1)], [11, L(k + 1), L(k)]);\n    }\n    const factors = [];\n    for (const [ia, ib, ic] of faces) {\n        const A = ico[ia], B = ico[ib], C = ico[ic];\n        const P = (i, j) => {\n            const k = f - i - j;\n            return norm([\n                (k * A[0] + i * B[0] + j * C[0]) / f,\n                (k * A[1] + i * B[1] + j * C[1]) / f,\n                (k * A[2] + i * B[2] + j * C[2]) / f,\n            ]);\n        };\n        for (let i = 0; i < f; i++) {\n            for (let j = 0; j < f - i; j++) {\n                const pts = [P(i, j), P(i + 1, j), P(i, j + 1)];\n                for (let e = 0; e < 3; e++) {\n                    const a = pts[e], b = pts[(e + 1) % 3];\n                    if (a[2] < -1e-6 || b[2] < -1e-6)\n                        continue;\n                    const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);\n                    if (!factors.some((x) => Math.abs(x - d) < 1e-4))\n                        factors.push(d);\n                }\n            }\n        }\n    }\n    factors.sort((x, y) => x - y);\n    const chordFactor = factors[Math.max(0, Math.min(factors.length - 1, Math.round(ribIndex)))];\n    const half = Math.asin(chordFactor / 2); // half the central angle of the edge\n    const s = Math.sin(half), c = Math.cos(half);\n    const rCore = hubCoreDiameter / 2, rCap = hubDiameter / 2;\n    if (rCap <= rCore)\n        throw new Error(\"Hub Diameter must be larger than Hub Core Diameter\");\n    if (2 * rCap * c >= chordFactor * R)\n        throw new Error(\"Hubs are too big for this dome: caps would meet\");\n    // Hub axes (unit) at each end, and cap-plane directions pointing along the rib\n    const uP = [-s, c], uQ = [s, c];\n    const tP = [c, s], tQ = [-c, s];\n    const at = (u, t, radius, d) => [\n        u[0] * radius + t[0] * d,\n        u[1] * radius + t[1] * d,\n    ];\n    const rIn = R - ribDepth;\n    const pts = [\n        at(uP, tP, R, rCore),\n        at(uP, tP, R, rCap),\n        at(uQ, tQ, R, rCap),\n        at(uQ, tQ, R, rCore),\n        at(uQ, tQ, rIn, rCore),\n        at(uQ, tQ, rIn, rCap),\n        at(uP, tP, rIn, rCap),\n        at(uP, tP, rIn, rCore),\n    ];\n    let d = replicad.draw(pts[0]);\n    for (let i = 1; i < pts.length; i++)\n        d = d.lineTo(pts[i]);\n    return new Assembly({ geometry: d.close() });\n}\n"
         },
         {
           "atomType": "Extrude",
@@ -853,6 +1677,15 @@
           ]
         },
         {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.7,
+          "uniqueID": "id-250",
+          "name": "Frequency",
+          "type": "number",
+          "options": []
+        },
+        {
           "atomType": "Output",
           "x": 1,
           "y": 0.5,
@@ -892,7 +1725,7 @@
           "ap2ID": "id-183"
         },
         {
-          "ap2Name": "chordFactor",
+          "ap2Name": "ribIndex",
           "ap1ID": "id-166",
           "ap2ID": "id-169"
         },
@@ -915,6 +1748,11 @@
           "ap2Name": "number or geometry",
           "ap1ID": "id-190",
           "ap2ID": "id-42"
+        },
+        {
+          "ap2Name": "frequency",
+          "ap1ID": "id-250",
+          "ap2ID": "id-169"
         }
       ],
       "fileTypeVersion": 1
@@ -953,6 +1791,22 @@
         {
           "name": "Rib Depth",
           "ioValue": 75
+        },
+        {
+          "name": "Rib D",
+          "ioValue": "__GEOMETRY_INPUT__"
+        },
+        {
+          "name": "Rib E",
+          "ioValue": "__GEOMETRY_INPUT__"
+        },
+        {
+          "name": "Rib F",
+          "ioValue": "__GEOMETRY_INPUT__"
+        },
+        {
+          "name": "Frequency",
+          "ioValue": 3
         }
       ],
       "topLevel": false,
@@ -1053,11 +1907,63 @@
             {
               "name": "ribDepth",
               "ioValue": 75
+            },
+            {
+              "name": "ribD",
+              "ioValue": "__GEOMETRY_INPUT__"
+            },
+            {
+              "name": "ribE",
+              "ioValue": "__GEOMETRY_INPUT__"
+            },
+            {
+              "name": "ribF",
+              "ioValue": "__GEOMETRY_INPUT__"
+            },
+            {
+              "name": "frequency",
+              "ioValue": 3
             }
           ],
           "interpreterVersion": 1,
-          "code": "/**\n * Places the plywood dome parts. Builds no geometry itself: it copies the\n * Rib A/B/C and Hub Cap parts (made once each in their own molecules) into\n * position, so the cost is only cheap transforms.\n *\n * 3V geodesic, icosahedron with a vertex on top, cut at the equator (3/8 dome).\n * Ribs stand in the plane through the dome center and their edge. Each hub\n * gets an outer cap (on the rib tops) and an inner cap (under the rib bottoms).\n * Parts only touch, never overlap, so the slow overlap-cutting pass is skipped.\n */\nfunction run(\n  ribA: Assembly | undefined = undefined,\n  ribB: Assembly | undefined = undefined,\n  ribC: Assembly | undefined = undefined,\n  hubCap: Assembly | undefined = undefined,\n  domeDiameter: number = 4000,\n  plywoodThickness: number = 18,\n  ribDepth: number = 120,\n): Assembly {\n  const R = domeDiameter / 2;\n  const T = plywoodThickness;\n  const f = 3;\n  type V = [number, number, number];\n  const norm = (v: V): V => {\n    const l = Math.hypot(v[0], v[1], v[2]);\n    return [v[0] / l, v[1] / l, v[2] / l];\n  };\n  const cross = (a: V, b: V): V => [\n    a[1] * b[2] - a[2] * b[1],\n    a[2] * b[0] - a[0] * b[2],\n    a[0] * b[1] - a[1] * b[0],\n  ];\n\n  // Icosahedron with a vertex at the top\n  const ico: V[] = [[0, 0, 1]];\n  const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n  for (let k = 0; k < 5; k++) {\n    const a = (k * 72 * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n  }\n  for (let k = 0; k < 5; k++) {\n    const a = ((36 + k * 72) * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n  }\n  ico.push([0, 0, -1]);\n  const U = (k: number) => 1 + (k % 5);\n  const L = (k: number) => 6 + (k % 5);\n  const faces: [number, number, number][] = [];\n  for (let k = 0; k < 5; k++) {\n    faces.push([0, U(k), U(k + 1)]);\n    faces.push([U(k), L(k), U(k + 1)]);\n    faces.push([U(k + 1), L(k), L(k + 1)]);\n    faces.push([11, L(k + 1), L(k)]);\n  }\n\n  // Subdivide each face and project onto the unit sphere\n  const verts: V[] = [];\n  const vIndex = new Map<string, number>();\n  const addVert = (p: V): number => {\n    const n = norm(p);\n    const key = n.map((c) => Math.round(c * 1e6)).join(\",\");\n    let i = vIndex.get(key);\n    if (i === undefined) {\n      i = verts.length;\n      verts.push(n);\n      vIndex.set(key, i);\n    }\n    return i;\n  };\n  const edges = new Map<string, [number, number]>();\n  const addEdge = (a: number, b: number) => {\n    const key = a < b ? `${a}-${b}` : `${b}-${a}`;\n    if (!edges.has(key)) edges.set(key, [a, b]);\n  };\n  for (const [ia, ib, ic] of faces) {\n    const A = ico[ia], B = ico[ib], C = ico[ic];\n    const P = (i: number, j: number) => {\n      const k = f - i - j;\n      return addVert([\n        (k * A[0] + i * B[0] + j * C[0]) / f,\n        (k * A[1] + i * B[1] + j * C[1]) / f,\n        (k * A[2] + i * B[2] + j * C[2]) / f,\n      ]);\n    };\n    for (let i = 0; i < f; i++) {\n      for (let j = 0; j < f - i; j++) {\n        const p0 = P(i, j), p1 = P(i + 1, j), p2 = P(i, j + 1);\n        addEdge(p0, p1); addEdge(p1, p2); addEdge(p2, p0);\n      }\n    }\n  }\n\n  // Keep the upper part of the sphere\n  const keep = verts.map((v) => v[2] >= -1e-6);\n  const usedVerts = verts.map((_, i) => i).filter((i) => keep[i]);\n  const usedEdges = [...edges.values()].filter(([a, b]) => keep[a] && keep[b]);\n  const lift = -Math.min(...usedVerts.map((i) => verts[i][2])) * R;\n\n  // Rotation taking local axes X, Y, Z onto the given world axes (axis-angle via quaternion)\n  const place = (shape: any, X: V, Y: V, Z: V, t: V) => {\n    const m00 = X[0], m01 = Y[0], m02 = Z[0];\n    const m10 = X[1], m11 = Y[1], m12 = Z[1];\n    const m20 = X[2], m21 = Y[2], m22 = Z[2];\n    let w, x, y, z;\n    const tr = m00 + m11 + m22;\n    if (tr > 0) {\n      const S = Math.sqrt(tr + 1) * 2;\n      w = S / 4; x = (m21 - m12) / S; y = (m02 - m20) / S; z = (m10 - m01) / S;\n    } else if (m00 > m11 && m00 > m22) {\n      const S = Math.sqrt(1 + m00 - m11 - m22) * 2;\n      w = (m21 - m12) / S; x = S / 4; y = (m01 + m10) / S; z = (m02 + m20) / S;\n    } else if (m11 > m22) {\n      const S = Math.sqrt(1 + m11 - m00 - m22) * 2;\n      w = (m02 - m20) / S; x = (m01 + m10) / S; y = S / 4; z = (m12 + m21) / S;\n    } else {\n      const S = Math.sqrt(1 + m22 - m00 - m11) * 2;\n      w = (m10 - m01) / S; x = (m02 + m20) / S; y = (m12 + m21) / S; z = S / 4;\n    }\n    const sinHalf = Math.hypot(x, y, z);\n    let s = shape;\n    if (sinHalf > 1e-9) {\n      const angle = (2 * Math.atan2(sinHalf, w) * 180) / Math.PI;\n      s = s.rotate(angle, [0, 0, 0], [x / sinHalf, y / sinHalf, z / sinHalf]);\n    }\n    return s.translate(t[0], t[1], t[2] + lift);\n  };\n\n  // Copy an Assembly with every leaf's geometry transformed\n  const transformAsm = (asm: Assembly, fn: (g: any) => any): Assembly => {\n    if (asm.isLeaf()) return new Assembly({ ...asm, geometry: fn(asm.geometry.clone()) });\n    return new Assembly({\n      ...asm,\n      geometry: (asm.geometry as any[]).map((c: Assembly) => transformAsm(c, fn)),\n    });\n  };\n\n  const ribs = [ribA, ribB, ribC];\n  const factors = [0.348615, 0.403548, 0.412411];\n  const names = [\"Rib A\", \"Rib B\", \"Rib C\"];\n  const counts = [0, 0, 0];\n  const parts: Assembly[] = [];\n\n  for (const [a, b] of usedEdges) {\n    const p: V = [verts[a][0] * R, verts[a][1] * R, verts[a][2] * R];\n    const q: V = [verts[b][0] * R, verts[b][1] * R, verts[b][2] * R];\n    const len = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);\n    let cls = 0;\n    for (let i = 1; i < 3; i++) {\n      if (Math.abs(len / R - factors[i]) < Math.abs(len / R - factors[cls])) cls = i;\n    }\n    counts[cls]++;\n    const rib = ribs[cls];\n    if (!rib) continue;\n    const X = norm([q[0] - p[0], q[1] - p[1], q[2] - p[2]]);\n    const Y = norm([p[0] + q[0], p[1] + q[1], p[2] + q[2]]);\n    const Z = cross(X, Y);\n    parts.push(transformAsm(rib, (g) => place(g.translate(0, 0, -T / 2), X, Y, Z, [0, 0, 0])));\n  }\n\n  if (hubCap) {\n    for (const i of usedVerts) {\n      const u = verts[i];\n      // Any two axes perpendicular to the hub axis (the cap is round)\n      const ref: V = Math.abs(u[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];\n      const X = norm(cross(ref, u));\n      const Y = cross(u, X);\n      for (const r of [R, R - ribDepth - T]) {\n        parts.push(transformAsm(hubCap, (g) => place(g, X, Y, u, [u[0] * r, u[1] * r, u[2] * r])));\n      }\n    }\n  }\n\n  const bom = names.map((n, i) => `${counts[i]}x ${n}`);\n  bom.push(`${usedVerts.length * 2}x Hub Cap`);\n  console.log(`3V dome, diameter ${domeDiameter} mm: ${usedVerts.length} hubs, ${usedEdges.length} ribs`);\n  bom.forEach((s) => console.log(s));\n\n  return new Assembly({ geometry: parts, bom }).skipDisjointPostprocess();\n}\n",
-          "compiledCode": "\"use strict\";\n/**\n * Places the plywood dome parts. Builds no geometry itself: it copies the\n * Rib A/B/C and Hub Cap parts (made once each in their own molecules) into\n * position, so the cost is only cheap transforms.\n *\n * 3V geodesic, icosahedron with a vertex on top, cut at the equator (3/8 dome).\n * Ribs stand in the plane through the dome center and their edge. Each hub\n * gets an outer cap (on the rib tops) and an inner cap (under the rib bottoms).\n * Parts only touch, never overlap, so the slow overlap-cutting pass is skipped.\n */\nfunction run(ribA = undefined, ribB = undefined, ribC = undefined, hubCap = undefined, domeDiameter = 4000, plywoodThickness = 18, ribDepth = 120) {\n    const R = domeDiameter / 2;\n    const T = plywoodThickness;\n    const f = 3;\n    const norm = (v) => {\n        const l = Math.hypot(v[0], v[1], v[2]);\n        return [v[0] / l, v[1] / l, v[2] / l];\n    };\n    const cross = (a, b) => [\n        a[1] * b[2] - a[2] * b[1],\n        a[2] * b[0] - a[0] * b[2],\n        a[0] * b[1] - a[1] * b[0],\n    ];\n    // Icosahedron with a vertex at the top\n    const ico = [[0, 0, 1]];\n    const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n    for (let k = 0; k < 5; k++) {\n        const a = (k * 72 * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n    }\n    for (let k = 0; k < 5; k++) {\n        const a = ((36 + k * 72) * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n    }\n    ico.push([0, 0, -1]);\n    const U = (k) => 1 + (k % 5);\n    const L = (k) => 6 + (k % 5);\n    const faces = [];\n    for (let k = 0; k < 5; k++) {\n        faces.push([0, U(k), U(k + 1)]);\n        faces.push([U(k), L(k), U(k + 1)]);\n        faces.push([U(k + 1), L(k), L(k + 1)]);\n        faces.push([11, L(k + 1), L(k)]);\n    }\n    // Subdivide each face and project onto the unit sphere\n    const verts = [];\n    const vIndex = new Map();\n    const addVert = (p) => {\n        const n = norm(p);\n        const key = n.map((c) => Math.round(c * 1e6)).join(\",\");\n        let i = vIndex.get(key);\n        if (i === undefined) {\n            i = verts.length;\n            verts.push(n);\n            vIndex.set(key, i);\n        }\n        return i;\n    };\n    const edges = new Map();\n    const addEdge = (a, b) => {\n        const key = a < b ? `${a}-${b}` : `${b}-${a}`;\n        if (!edges.has(key))\n            edges.set(key, [a, b]);\n    };\n    for (const [ia, ib, ic] of faces) {\n        const A = ico[ia], B = ico[ib], C = ico[ic];\n        const P = (i, j) => {\n            const k = f - i - j;\n            return addVert([\n                (k * A[0] + i * B[0] + j * C[0]) / f,\n                (k * A[1] + i * B[1] + j * C[1]) / f,\n                (k * A[2] + i * B[2] + j * C[2]) / f,\n            ]);\n        };\n        for (let i = 0; i < f; i++) {\n            for (let j = 0; j < f - i; j++) {\n                const p0 = P(i, j), p1 = P(i + 1, j), p2 = P(i, j + 1);\n                addEdge(p0, p1);\n                addEdge(p1, p2);\n                addEdge(p2, p0);\n            }\n        }\n    }\n    // Keep the upper part of the sphere\n    const keep = verts.map((v) => v[2] >= -1e-6);\n    const usedVerts = verts.map((_, i) => i).filter((i) => keep[i]);\n    const usedEdges = [...edges.values()].filter(([a, b]) => keep[a] && keep[b]);\n    const lift = -Math.min(...usedVerts.map((i) => verts[i][2])) * R;\n    // Rotation taking local axes X, Y, Z onto the given world axes (axis-angle via quaternion)\n    const place = (shape, X, Y, Z, t) => {\n        const m00 = X[0], m01 = Y[0], m02 = Z[0];\n        const m10 = X[1], m11 = Y[1], m12 = Z[1];\n        const m20 = X[2], m21 = Y[2], m22 = Z[2];\n        let w, x, y, z;\n        const tr = m00 + m11 + m22;\n        if (tr > 0) {\n            const S = Math.sqrt(tr + 1) * 2;\n            w = S / 4;\n            x = (m21 - m12) / S;\n            y = (m02 - m20) / S;\n            z = (m10 - m01) / S;\n        }\n        else if (m00 > m11 && m00 > m22) {\n            const S = Math.sqrt(1 + m00 - m11 - m22) * 2;\n            w = (m21 - m12) / S;\n            x = S / 4;\n            y = (m01 + m10) / S;\n            z = (m02 + m20) / S;\n        }\n        else if (m11 > m22) {\n            const S = Math.sqrt(1 + m11 - m00 - m22) * 2;\n            w = (m02 - m20) / S;\n            x = (m01 + m10) / S;\n            y = S / 4;\n            z = (m12 + m21) / S;\n        }\n        else {\n            const S = Math.sqrt(1 + m22 - m00 - m11) * 2;\n            w = (m10 - m01) / S;\n            x = (m02 + m20) / S;\n            y = (m12 + m21) / S;\n            z = S / 4;\n        }\n        const sinHalf = Math.hypot(x, y, z);\n        let s = shape;\n        if (sinHalf > 1e-9) {\n            const angle = (2 * Math.atan2(sinHalf, w) * 180) / Math.PI;\n            s = s.rotate(angle, [0, 0, 0], [x / sinHalf, y / sinHalf, z / sinHalf]);\n        }\n        return s.translate(t[0], t[1], t[2] + lift);\n    };\n    // Copy an Assembly with every leaf's geometry transformed\n    const transformAsm = (asm, fn) => {\n        if (asm.isLeaf())\n            return new Assembly({ ...asm, geometry: fn(asm.geometry.clone()) });\n        return new Assembly({\n            ...asm,\n            geometry: asm.geometry.map((c) => transformAsm(c, fn)),\n        });\n    };\n    const ribs = [ribA, ribB, ribC];\n    const factors = [0.348615, 0.403548, 0.412411];\n    const names = [\"Rib A\", \"Rib B\", \"Rib C\"];\n    const counts = [0, 0, 0];\n    const parts = [];\n    for (const [a, b] of usedEdges) {\n        const p = [verts[a][0] * R, verts[a][1] * R, verts[a][2] * R];\n        const q = [verts[b][0] * R, verts[b][1] * R, verts[b][2] * R];\n        const len = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);\n        let cls = 0;\n        for (let i = 1; i < 3; i++) {\n            if (Math.abs(len / R - factors[i]) < Math.abs(len / R - factors[cls]))\n                cls = i;\n        }\n        counts[cls]++;\n        const rib = ribs[cls];\n        if (!rib)\n            continue;\n        const X = norm([q[0] - p[0], q[1] - p[1], q[2] - p[2]]);\n        const Y = norm([p[0] + q[0], p[1] + q[1], p[2] + q[2]]);\n        const Z = cross(X, Y);\n        parts.push(transformAsm(rib, (g) => place(g.translate(0, 0, -T / 2), X, Y, Z, [0, 0, 0])));\n    }\n    if (hubCap) {\n        for (const i of usedVerts) {\n            const u = verts[i];\n            // Any two axes perpendicular to the hub axis (the cap is round)\n            const ref = Math.abs(u[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];\n            const X = norm(cross(ref, u));\n            const Y = cross(u, X);\n            for (const r of [R, R - ribDepth - T]) {\n                parts.push(transformAsm(hubCap, (g) => place(g, X, Y, u, [u[0] * r, u[1] * r, u[2] * r])));\n            }\n        }\n    }\n    const bom = names.map((n, i) => `${counts[i]}x ${n}`);\n    bom.push(`${usedVerts.length * 2}x Hub Cap`);\n    console.log(`3V dome, diameter ${domeDiameter} mm: ${usedVerts.length} hubs, ${usedEdges.length} ribs`);\n    bom.forEach((s) => console.log(s));\n    return new Assembly({ geometry: parts, bom }).skipDisjointPostprocess();\n}\n"
+          "code": "/**\n * Places the plywood dome parts. Builds no geometry itself: it copies the\n * Rib A-F and Hub Cap parts (made once each in their own molecules) into\n * position, so the cost is only cheap transforms.\n *\n * Geodesic dome of the chosen frequency (1V-4V), icosahedron with a vertex on\n * top, cut at the equator. Rib A is the shortest edge length, B the next, etc.\n * (1V uses A; 2V A-B; 3V A-C; 4V A-F.) Ribs stand in the plane through the\n * dome center and their edge. Each hub gets an outer cap (on the rib tops) and\n * an inner cap (under the rib bottoms). Parts only touch, never overlap, so\n * the slow overlap-cutting pass is skipped.\n */\nfunction run(\n  ribA: Assembly | undefined = undefined,\n  ribB: Assembly | undefined = undefined,\n  ribC: Assembly | undefined = undefined,\n  ribD: Assembly | undefined = undefined,\n  ribE: Assembly | undefined = undefined,\n  ribF: Assembly | undefined = undefined,\n  hubCap: Assembly | undefined = undefined,\n  frequency: number = 3,\n  domeDiameter: number = 4000,\n  plywoodThickness: number = 18,\n  ribDepth: number = 120,\n): Assembly {\n  const R = domeDiameter / 2;\n  const T = plywoodThickness;\n  const f = Math.max(1, Math.min(4, Math.round(frequency)));\n  type V = [number, number, number];\n  const norm = (v: V): V => {\n    const l = Math.hypot(v[0], v[1], v[2]);\n    return [v[0] / l, v[1] / l, v[2] / l];\n  };\n  const cross = (a: V, b: V): V => [\n    a[1] * b[2] - a[2] * b[1],\n    a[2] * b[0] - a[0] * b[2],\n    a[0] * b[1] - a[1] * b[0],\n  ];\n\n  // Icosahedron with a vertex at the top\n  const ico: V[] = [[0, 0, 1]];\n  const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n  for (let k = 0; k < 5; k++) {\n    const a = (k * 72 * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n  }\n  for (let k = 0; k < 5; k++) {\n    const a = ((36 + k * 72) * Math.PI) / 180;\n    ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n  }\n  ico.push([0, 0, -1]);\n  const U = (k: number) => 1 + (k % 5);\n  const L = (k: number) => 6 + (k % 5);\n  const faces: [number, number, number][] = [];\n  for (let k = 0; k < 5; k++) {\n    faces.push([0, U(k), U(k + 1)], [U(k), L(k), U(k + 1)], [U(k + 1), L(k), L(k + 1)], [11, L(k + 1), L(k)]);\n  }\n\n  // Subdivide each face and project onto the unit sphere\n  const verts: V[] = [];\n  const vIndex = new Map<string, number>();\n  const addVert = (p: V): number => {\n    const n = norm(p);\n    const key = n.map((c) => Math.round(c * 1e6)).join(\",\");\n    let i = vIndex.get(key);\n    if (i === undefined) {\n      i = verts.length;\n      verts.push(n);\n      vIndex.set(key, i);\n    }\n    return i;\n  };\n  const edges = new Map<string, [number, number]>();\n  const addEdge = (a: number, b: number) => {\n    const key = a < b ? `${a}-${b}` : `${b}-${a}`;\n    if (!edges.has(key)) edges.set(key, [a, b]);\n  };\n  for (const [ia, ib, ic] of faces) {\n    const A = ico[ia], B = ico[ib], C = ico[ic];\n    const P = (i: number, j: number) => {\n      const k = f - i - j;\n      return addVert([\n        (k * A[0] + i * B[0] + j * C[0]) / f,\n        (k * A[1] + i * B[1] + j * C[1]) / f,\n        (k * A[2] + i * B[2] + j * C[2]) / f,\n      ]);\n    };\n    for (let i = 0; i < f; i++) {\n      for (let j = 0; j < f - i; j++) {\n        const p0 = P(i, j), p1 = P(i + 1, j), p2 = P(i, j + 1);\n        addEdge(p0, p1); addEdge(p1, p2); addEdge(p2, p0);\n      }\n    }\n  }\n\n  // Keep the upper part of the sphere\n  const keep = verts.map((v) => v[2] >= -1e-6);\n  const usedVerts = verts.map((_, i) => i).filter((i) => keep[i]);\n  const usedEdges = [...edges.values()].filter(([a, b]) => keep[a] && keep[b]);\n  const lift = -Math.min(...usedVerts.map((i) => verts[i][2])) * R;\n\n  // Rib classes: distinct unit edge lengths, shortest first (same rule as the Rib molecules)\n  const unitLen = ([a, b]: [number, number]) =>\n    Math.hypot(verts[a][0] - verts[b][0], verts[a][1] - verts[b][1], verts[a][2] - verts[b][2]);\n  const factors: number[] = [];\n  for (const e of usedEdges) {\n    const d = unitLen(e);\n    if (!factors.some((x) => Math.abs(x - d) < 1e-4)) factors.push(d);\n  }\n  factors.sort((x, y) => x - y);\n  const ribs = [ribA, ribB, ribC, ribD, ribE, ribF];\n  const names = [\"Rib A\", \"Rib B\", \"Rib C\", \"Rib D\", \"Rib E\", \"Rib F\"];\n  if (factors.length > ribs.length) throw new Error(`${f}V needs ${factors.length} rib types; only ${ribs.length} are available`);\n  const counts = factors.map(() => 0);\n\n  // Rotation taking local axes X, Y, Z onto the given world axes (axis-angle via quaternion)\n  const place = (shape: any, X: V, Y: V, Z: V, t: V) => {\n    const m00 = X[0], m01 = Y[0], m02 = Z[0];\n    const m10 = X[1], m11 = Y[1], m12 = Z[1];\n    const m20 = X[2], m21 = Y[2], m22 = Z[2];\n    let w, x, y, z;\n    const tr = m00 + m11 + m22;\n    if (tr > 0) {\n      const S = Math.sqrt(tr + 1) * 2;\n      w = S / 4; x = (m21 - m12) / S; y = (m02 - m20) / S; z = (m10 - m01) / S;\n    } else if (m00 > m11 && m00 > m22) {\n      const S = Math.sqrt(1 + m00 - m11 - m22) * 2;\n      w = (m21 - m12) / S; x = S / 4; y = (m01 + m10) / S; z = (m02 + m20) / S;\n    } else if (m11 > m22) {\n      const S = Math.sqrt(1 + m11 - m00 - m22) * 2;\n      w = (m02 - m20) / S; x = (m01 + m10) / S; y = S / 4; z = (m12 + m21) / S;\n    } else {\n      const S = Math.sqrt(1 + m22 - m00 - m11) * 2;\n      w = (m10 - m01) / S; x = (m02 + m20) / S; y = (m12 + m21) / S; z = S / 4;\n    }\n    const sinHalf = Math.hypot(x, y, z);\n    let s = shape;\n    if (sinHalf > 1e-9) {\n      const angle = (2 * Math.atan2(sinHalf, w) * 180) / Math.PI;\n      s = s.rotate(angle, [0, 0, 0], [x / sinHalf, y / sinHalf, z / sinHalf]);\n    }\n    return s.translate(t[0], t[1], t[2] + lift);\n  };\n\n  // Copy an Assembly with every leaf's geometry transformed\n  const transformAsm = (asm: Assembly, fn: (g: any) => any): Assembly => {\n    if (asm.isLeaf()) return new Assembly({ ...asm, geometry: fn(asm.geometry.clone()) });\n    return new Assembly({\n      ...asm,\n      geometry: (asm.geometry as any[]).map((c: Assembly) => transformAsm(c, fn)),\n    });\n  };\n\n  const parts: Assembly[] = [];\n  for (const e of usedEdges) {\n    const [a, b] = e;\n    const d = unitLen(e);\n    const cls = factors.findIndex((x) => Math.abs(x - d) < 1e-4);\n    counts[cls]++;\n    const rib = ribs[cls];\n    if (!rib) continue;\n    const p: V = [verts[a][0] * R, verts[a][1] * R, verts[a][2] * R];\n    const q: V = [verts[b][0] * R, verts[b][1] * R, verts[b][2] * R];\n    const X = norm([q[0] - p[0], q[1] - p[1], q[2] - p[2]]);\n    const Y = norm([p[0] + q[0], p[1] + q[1], p[2] + q[2]]);\n    const Z = cross(X, Y);\n    parts.push(transformAsm(rib, (g) => place(g.translate(0, 0, -T / 2), X, Y, Z, [0, 0, 0])));\n  }\n\n  if (hubCap) {\n    for (const i of usedVerts) {\n      const u = verts[i];\n      // Any two axes perpendicular to the hub axis (the cap is round)\n      const ref: V = Math.abs(u[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];\n      const X = norm(cross(ref, u));\n      const Y = cross(u, X);\n      for (const r of [R, R - ribDepth - T]) {\n        parts.push(transformAsm(hubCap, (g) => place(g, X, Y, u, [u[0] * r, u[1] * r, u[2] * r])));\n      }\n    }\n  }\n\n  const bom = factors.map((x, i) => `${counts[i]}x ${names[i]} (${(x * R).toFixed(1)} mm hub-center to hub-center)`);\n  bom.push(`${usedVerts.length * 2}x Hub Cap`);\n  console.log(`${f}V dome, diameter ${domeDiameter} mm: ${usedVerts.length} hubs, ${usedEdges.length} ribs`);\n  bom.forEach((s) => console.log(s));\n\n  return new Assembly({ geometry: parts, bom }).skipDisjointPostprocess();\n}\n",
+          "compiledCode": "\"use strict\";\n/**\n * Places the plywood dome parts. Builds no geometry itself: it copies the\n * Rib A-F and Hub Cap parts (made once each in their own molecules) into\n * position, so the cost is only cheap transforms.\n *\n * Geodesic dome of the chosen frequency (1V-4V), icosahedron with a vertex on\n * top, cut at the equator. Rib A is the shortest edge length, B the next, etc.\n * (1V uses A; 2V A-B; 3V A-C; 4V A-F.) Ribs stand in the plane through the\n * dome center and their edge. Each hub gets an outer cap (on the rib tops) and\n * an inner cap (under the rib bottoms). Parts only touch, never overlap, so\n * the slow overlap-cutting pass is skipped.\n */\nfunction run(ribA = undefined, ribB = undefined, ribC = undefined, ribD = undefined, ribE = undefined, ribF = undefined, hubCap = undefined, frequency = 3, domeDiameter = 4000, plywoodThickness = 18, ribDepth = 120) {\n    const R = domeDiameter / 2;\n    const T = plywoodThickness;\n    const f = Math.max(1, Math.min(4, Math.round(frequency)));\n    const norm = (v) => {\n        const l = Math.hypot(v[0], v[1], v[2]);\n        return [v[0] / l, v[1] / l, v[2] / l];\n    };\n    const cross = (a, b) => [\n        a[1] * b[2] - a[2] * b[1],\n        a[2] * b[0] - a[0] * b[2],\n        a[0] * b[1] - a[1] * b[0],\n    ];\n    // Icosahedron with a vertex at the top\n    const ico = [[0, 0, 1]];\n    const zr = 1 / Math.sqrt(5), rr = 2 / Math.sqrt(5);\n    for (let k = 0; k < 5; k++) {\n        const a = (k * 72 * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), zr]);\n    }\n    for (let k = 0; k < 5; k++) {\n        const a = ((36 + k * 72) * Math.PI) / 180;\n        ico.push([rr * Math.cos(a), rr * Math.sin(a), -zr]);\n    }\n    ico.push([0, 0, -1]);\n    const U = (k) => 1 + (k % 5);\n    const L = (k) => 6 + (k % 5);\n    const faces = [];\n    for (let k = 0; k < 5; k++) {\n        faces.push([0, U(k), U(k + 1)], [U(k), L(k), U(k + 1)], [U(k + 1), L(k), L(k + 1)], [11, L(k + 1), L(k)]);\n    }\n    // Subdivide each face and project onto the unit sphere\n    const verts = [];\n    const vIndex = new Map();\n    const addVert = (p) => {\n        const n = norm(p);\n        const key = n.map((c) => Math.round(c * 1e6)).join(\",\");\n        let i = vIndex.get(key);\n        if (i === undefined) {\n            i = verts.length;\n            verts.push(n);\n            vIndex.set(key, i);\n        }\n        return i;\n    };\n    const edges = new Map();\n    const addEdge = (a, b) => {\n        const key = a < b ? `${a}-${b}` : `${b}-${a}`;\n        if (!edges.has(key))\n            edges.set(key, [a, b]);\n    };\n    for (const [ia, ib, ic] of faces) {\n        const A = ico[ia], B = ico[ib], C = ico[ic];\n        const P = (i, j) => {\n            const k = f - i - j;\n            return addVert([\n                (k * A[0] + i * B[0] + j * C[0]) / f,\n                (k * A[1] + i * B[1] + j * C[1]) / f,\n                (k * A[2] + i * B[2] + j * C[2]) / f,\n            ]);\n        };\n        for (let i = 0; i < f; i++) {\n            for (let j = 0; j < f - i; j++) {\n                const p0 = P(i, j), p1 = P(i + 1, j), p2 = P(i, j + 1);\n                addEdge(p0, p1);\n                addEdge(p1, p2);\n                addEdge(p2, p0);\n            }\n        }\n    }\n    // Keep the upper part of the sphere\n    const keep = verts.map((v) => v[2] >= -1e-6);\n    const usedVerts = verts.map((_, i) => i).filter((i) => keep[i]);\n    const usedEdges = [...edges.values()].filter(([a, b]) => keep[a] && keep[b]);\n    const lift = -Math.min(...usedVerts.map((i) => verts[i][2])) * R;\n    // Rib classes: distinct unit edge lengths, shortest first (same rule as the Rib molecules)\n    const unitLen = ([a, b]) => Math.hypot(verts[a][0] - verts[b][0], verts[a][1] - verts[b][1], verts[a][2] - verts[b][2]);\n    const factors = [];\n    for (const e of usedEdges) {\n        const d = unitLen(e);\n        if (!factors.some((x) => Math.abs(x - d) < 1e-4))\n            factors.push(d);\n    }\n    factors.sort((x, y) => x - y);\n    const ribs = [ribA, ribB, ribC, ribD, ribE, ribF];\n    const names = [\"Rib A\", \"Rib B\", \"Rib C\", \"Rib D\", \"Rib E\", \"Rib F\"];\n    if (factors.length > ribs.length)\n        throw new Error(`${f}V needs ${factors.length} rib types; only ${ribs.length} are available`);\n    const counts = factors.map(() => 0);\n    // Rotation taking local axes X, Y, Z onto the given world axes (axis-angle via quaternion)\n    const place = (shape, X, Y, Z, t) => {\n        const m00 = X[0], m01 = Y[0], m02 = Z[0];\n        const m10 = X[1], m11 = Y[1], m12 = Z[1];\n        const m20 = X[2], m21 = Y[2], m22 = Z[2];\n        let w, x, y, z;\n        const tr = m00 + m11 + m22;\n        if (tr > 0) {\n            const S = Math.sqrt(tr + 1) * 2;\n            w = S / 4;\n            x = (m21 - m12) / S;\n            y = (m02 - m20) / S;\n            z = (m10 - m01) / S;\n        }\n        else if (m00 > m11 && m00 > m22) {\n            const S = Math.sqrt(1 + m00 - m11 - m22) * 2;\n            w = (m21 - m12) / S;\n            x = S / 4;\n            y = (m01 + m10) / S;\n            z = (m02 + m20) / S;\n        }\n        else if (m11 > m22) {\n            const S = Math.sqrt(1 + m11 - m00 - m22) * 2;\n            w = (m02 - m20) / S;\n            x = (m01 + m10) / S;\n            y = S / 4;\n            z = (m12 + m21) / S;\n        }\n        else {\n            const S = Math.sqrt(1 + m22 - m00 - m11) * 2;\n            w = (m10 - m01) / S;\n            x = (m02 + m20) / S;\n            y = (m12 + m21) / S;\n            z = S / 4;\n        }\n        const sinHalf = Math.hypot(x, y, z);\n        let s = shape;\n        if (sinHalf > 1e-9) {\n            const angle = (2 * Math.atan2(sinHalf, w) * 180) / Math.PI;\n            s = s.rotate(angle, [0, 0, 0], [x / sinHalf, y / sinHalf, z / sinHalf]);\n        }\n        return s.translate(t[0], t[1], t[2] + lift);\n    };\n    // Copy an Assembly with every leaf's geometry transformed\n    const transformAsm = (asm, fn) => {\n        if (asm.isLeaf())\n            return new Assembly({ ...asm, geometry: fn(asm.geometry.clone()) });\n        return new Assembly({\n            ...asm,\n            geometry: asm.geometry.map((c) => transformAsm(c, fn)),\n        });\n    };\n    const parts = [];\n    for (const e of usedEdges) {\n        const [a, b] = e;\n        const d = unitLen(e);\n        const cls = factors.findIndex((x) => Math.abs(x - d) < 1e-4);\n        counts[cls]++;\n        const rib = ribs[cls];\n        if (!rib)\n            continue;\n        const p = [verts[a][0] * R, verts[a][1] * R, verts[a][2] * R];\n        const q = [verts[b][0] * R, verts[b][1] * R, verts[b][2] * R];\n        const X = norm([q[0] - p[0], q[1] - p[1], q[2] - p[2]]);\n        const Y = norm([p[0] + q[0], p[1] + q[1], p[2] + q[2]]);\n        const Z = cross(X, Y);\n        parts.push(transformAsm(rib, (g) => place(g.translate(0, 0, -T / 2), X, Y, Z, [0, 0, 0])));\n    }\n    if (hubCap) {\n        for (const i of usedVerts) {\n            const u = verts[i];\n            // Any two axes perpendicular to the hub axis (the cap is round)\n            const ref = Math.abs(u[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];\n            const X = norm(cross(ref, u));\n            const Y = cross(u, X);\n            for (const r of [R, R - ribDepth - T]) {\n                parts.push(transformAsm(hubCap, (g) => place(g, X, Y, u, [u[0] * r, u[1] * r, u[2] * r])));\n            }\n        }\n    }\n    const bom = factors.map((x, i) => `${counts[i]}x ${names[i]} (${(x * R).toFixed(1)} mm hub-center to hub-center)`);\n    bom.push(`${usedVerts.length * 2}x Hub Cap`);\n    console.log(`${f}V dome, diameter ${domeDiameter} mm: ${usedVerts.length} hubs, ${usedEdges.length} ribs`);\n    bom.forEach((s) => console.log(s));\n    return new Assembly({ geometry: parts, bom }).skipDisjointPostprocess();\n}\n"
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.8,
+          "uniqueID": "id-405",
+          "name": "Rib D",
+          "type": "geometry",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 0.9,
+          "uniqueID": "id-408",
+          "name": "Rib E",
+          "type": "geometry",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 1,
+          "uniqueID": "id-411",
+          "name": "Rib F",
+          "type": "geometry",
+          "options": []
+        },
+        {
+          "atomType": "Input",
+          "x": 0,
+          "y": 1,
+          "uniqueID": "id-414",
+          "name": "Frequency",
+          "type": "number",
+          "options": []
         },
         {
           "atomType": "Output",
@@ -1112,6 +2018,26 @@
           "ap2Name": "number or geometry",
           "ap1ID": "id-214",
           "ap2ID": "id-46"
+        },
+        {
+          "ap2Name": "ribD",
+          "ap1ID": "id-405",
+          "ap2ID": "id-214"
+        },
+        {
+          "ap2Name": "ribE",
+          "ap1ID": "id-408",
+          "ap2ID": "id-214"
+        },
+        {
+          "ap2Name": "ribF",
+          "ap1ID": "id-411",
+          "ap2ID": "id-214"
+        },
+        {
+          "ap2Name": "frequency",
+          "ap1ID": "id-414",
+          "ap2ID": "id-214"
         }
       ],
       "fileTypeVersion": 1
@@ -1139,6 +2065,21 @@
       "ap2ID": "id-44"
     },
     {
+      "ap2Name": "Dome Diameter",
+      "ap1ID": "id-13",
+      "ap2ID": "id-255"
+    },
+    {
+      "ap2Name": "Dome Diameter",
+      "ap1ID": "id-13",
+      "ap2ID": "id-305"
+    },
+    {
+      "ap2Name": "Dome Diameter",
+      "ap1ID": "id-13",
+      "ap2ID": "id-355"
+    },
+    {
       "ap2Name": "Plywood Thickness",
       "ap1ID": "id-16",
       "ap2ID": "id-28"
@@ -1164,6 +2105,21 @@
       "ap2ID": "id-44"
     },
     {
+      "ap2Name": "Plywood Thickness",
+      "ap1ID": "id-16",
+      "ap2ID": "id-255"
+    },
+    {
+      "ap2Name": "Plywood Thickness",
+      "ap1ID": "id-16",
+      "ap2ID": "id-305"
+    },
+    {
+      "ap2Name": "Plywood Thickness",
+      "ap1ID": "id-16",
+      "ap2ID": "id-355"
+    },
+    {
       "ap2Name": "Rib Depth",
       "ap1ID": "id-19",
       "ap2ID": "id-32"
@@ -1182,6 +2138,21 @@
       "ap2Name": "Rib Depth",
       "ap1ID": "id-19",
       "ap2ID": "id-44"
+    },
+    {
+      "ap2Name": "Rib Depth",
+      "ap1ID": "id-19",
+      "ap2ID": "id-255"
+    },
+    {
+      "ap2Name": "Rib Depth",
+      "ap1ID": "id-19",
+      "ap2ID": "id-305"
+    },
+    {
+      "ap2Name": "Rib Depth",
+      "ap1ID": "id-19",
+      "ap2ID": "id-355"
     },
     {
       "ap2Name": "Hub Diameter",
@@ -1204,6 +2175,21 @@
       "ap2ID": "id-40"
     },
     {
+      "ap2Name": "Hub Diameter",
+      "ap1ID": "id-22",
+      "ap2ID": "id-255"
+    },
+    {
+      "ap2Name": "Hub Diameter",
+      "ap1ID": "id-22",
+      "ap2ID": "id-305"
+    },
+    {
+      "ap2Name": "Hub Diameter",
+      "ap1ID": "id-22",
+      "ap2ID": "id-355"
+    },
+    {
       "ap2Name": "Hub Core Diameter",
       "ap1ID": "id-25",
       "ap2ID": "id-32"
@@ -1217,6 +2203,21 @@
       "ap2Name": "Hub Core Diameter",
       "ap1ID": "id-25",
       "ap2ID": "id-40"
+    },
+    {
+      "ap2Name": "Hub Core Diameter",
+      "ap1ID": "id-25",
+      "ap2ID": "id-255"
+    },
+    {
+      "ap2Name": "Hub Core Diameter",
+      "ap1ID": "id-25",
+      "ap2ID": "id-305"
+    },
+    {
+      "ap2Name": "Hub Core Diameter",
+      "ap1ID": "id-25",
+      "ap2ID": "id-355"
     },
     {
       "ap2Name": "Hub Cap",
@@ -1242,6 +2243,56 @@
       "ap2Name": "number or geometry",
       "ap1ID": "id-44",
       "ap2ID": "id-2"
+    },
+    {
+      "ap2Name": "Frequency",
+      "ap1ID": "id-231",
+      "ap2ID": "id-32"
+    },
+    {
+      "ap2Name": "Frequency",
+      "ap1ID": "id-231",
+      "ap2ID": "id-36"
+    },
+    {
+      "ap2Name": "Frequency",
+      "ap1ID": "id-231",
+      "ap2ID": "id-40"
+    },
+    {
+      "ap2Name": "Frequency",
+      "ap1ID": "id-231",
+      "ap2ID": "id-255"
+    },
+    {
+      "ap2Name": "Frequency",
+      "ap1ID": "id-231",
+      "ap2ID": "id-305"
+    },
+    {
+      "ap2Name": "Frequency",
+      "ap1ID": "id-231",
+      "ap2ID": "id-355"
+    },
+    {
+      "ap2Name": "Frequency",
+      "ap1ID": "id-231",
+      "ap2ID": "id-44"
+    },
+    {
+      "ap2Name": "Rib D",
+      "ap1ID": "id-255",
+      "ap2ID": "id-44"
+    },
+    {
+      "ap2Name": "Rib E",
+      "ap1ID": "id-305",
+      "ap2ID": "id-44"
+    },
+    {
+      "ap2Name": "Rib F",
+      "ap1ID": "id-355",
+      "ap2ID": "id-44"
     }
   ],
   "unitsKey": "MM",
